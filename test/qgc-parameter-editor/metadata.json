@@ -1,0 +1,5 @@
+{
+  "name": "QGC Parameter Editor",
+  "description": "A high-fidelity clone of the QGroundControl parameter editing interface using React and Tailwind CSS.",
+  "requestFramePermissions": []
+}

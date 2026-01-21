@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Key Manager - MAVLink Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              slate: {
+                850: '#1e293b',
+                950: '#020617',
+              }
+            },
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+              mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      ::-webkit-scrollbar { width: 8px; }
+      ::-webkit-scrollbar-track { background: #0f172a; }
+      ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+      .animate-in { animation: fadeIn 0.3s ease-out; }
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+      .loading { animation: pulse 1.5s infinite; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-200 font-sans antialiased min-h-screen">
+    <div class="min-h-screen flex flex-col">
+        <!-- Header -->
+        <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur-md">
+            <div class="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-cyan-500/10 rounded-xl flex items-center justify-center border border-cyan-500/50">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-cyan-400"><path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/></svg>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold text-white">API Key Manager</h1>
+                        <p class="text-xs text-slate-500">MAVLink Simulator</p>
+                    </div>
+                </div>
+                <a href="/dashboard.html" class="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+                    Back to Dashboard
+                </a>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-1 py-12">
+            <div class="max-w-2xl mx-auto px-6">
+                <!-- Status Card -->
+                <div id="status-card" class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+                    <!-- Loading State -->
+                    <div id="loading-state" class="p-12 text-center">
+                        <div class="w-12 h-12 border-2 border-cyan-500/30 border-t-cyan-500 rounded-full mx-auto mb-4 animate-spin"></div>
+                        <p class="text-slate-400">Đang kiểm tra trạng thái API Key...</p>
+                    </div>
+
+                    <!-- No Key State -->
+                    <div id="no-key-state" class="hidden p-12 text-center animate-in">
+                        <div class="w-20 h-20 bg-slate-800/50 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-slate-600"><path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/></svg>
+                        </div>
+                        <h2 class="text-xl font-bold text-white mb-2">Chưa có API Key</h2>
+                        <p class="text-slate-400 mb-8 max-w-sm mx-auto">
+                            Drone này chưa có API Key. Tạo key mới để cho phép user kết nối và điều khiển drone.
+                        </p>
+                        <button onclick="requestAPIKey()" id="request-btn" class="inline-flex items-center gap-2 bg-cyan-600 hover:bg-cyan-500 text-white px-6 py-3 rounded-xl text-sm font-semibold transition-all shadow-lg shadow-cyan-900/30 active:scale-95">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                            Tạo API Key
+                        </button>
+                    </div>
+
+                    <!-- Has Key State -->
+                    <div id="has-key-state" class="hidden animate-in">
+                        <div class="p-6 border-b border-slate-800 bg-slate-950/50">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center border border-emerald-500/30">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-emerald-400"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></svg>
+                                    </div>
+                                    <div>
+                                        <h3 class="font-semibold text-white">API Key Active</h3>
+                                        <p class="text-xs text-slate-500">Drone đã có key, sẵn sàng kết nối</p>
+                                    </div>
+                                </div>
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                    <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full"></span>
+                                    Active
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="p-6 space-y-6">
+                            <!-- Key Info -->
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">API Key</label>
+                                <div class="flex items-center gap-2 bg-slate-950 border border-slate-700 rounded-lg p-3">
+                                    <code id="api-key-display" class="flex-1 font-mono text-sm text-slate-300 truncate">••••••••••••••••••••••••••••••••</code>
+                                    <button onclick="toggleKeyVisibility()" id="toggle-visibility-btn" class="p-1.5 text-slate-500 hover:text-white transition-colors" title="Hiện/Ẩn">
+                                        <svg id="eye-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
+                                        <svg id="eye-off-icon" class="hidden" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/></svg>
+                                    </button>
+                                    <button onclick="copyAPIKey()" class="p-1.5 text-slate-500 hover:text-cyan-400 transition-colors" title="Copy">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Timestamps -->
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">Ngày tạo</label>
+                                    <p id="created-at" class="font-mono text-sm text-slate-300">--</p>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">Hết hạn</label>
+                                    <p id="expires-at" class="font-mono text-sm text-slate-300">--</p>
+                                    <p id="time-remaining" class="text-xs text-orange-400 mt-1"></p>
+                                </div>
+                            </div>
+
+                            <!-- User Connection Status -->
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">Trạng thái kết nối User</label>
+                                <div id="user-status" class="flex items-center gap-2 text-slate-400">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                    <span>Chờ user kết nối...</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="p-6 border-t border-slate-800 bg-slate-950/30">
+                            <button onclick="revokeAPIKey()" id="revoke-btn" class="w-full flex items-center justify-center gap-2 bg-red-600/10 hover:bg-red-600/20 text-red-400 hover:text-red-300 px-4 py-3 rounded-xl text-sm font-medium transition-all border border-red-600/20 hover:border-red-600/30">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                                Hủy API Key
+                            </button>
+                            <p class="text-xs text-slate-600 text-center mt-3">Hủy key sẽ ngắt kết nối user ngay lập tức. Bạn có thể tạo key mới sau đó.</p>
+                        </div>
+                    </div>
+
+                    <!-- Error State -->
+                    <div id="error-state" class="hidden p-12 text-center animate-in">
+                        <div class="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-400"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+                        </div>
+                        <h2 class="text-lg font-bold text-white mb-2">Lỗi kết nối</h2>
+                        <p id="error-message" class="text-slate-400 mb-6">Không thể kết nối đến server.</p>
+                        <button onclick="checkStatus(true)" class="text-cyan-400 hover:text-cyan-300 text-sm font-medium">
+                            Thử lại
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Info Box -->
+                <div class="mt-6 p-4 bg-slate-900/50 border border-slate-800 rounded-xl">
+                    <div class="flex items-start gap-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-cyan-500 mt-0.5 shrink-0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                        <div class="text-sm text-slate-400">
+                            <p class="font-medium text-slate-300 mb-1">Lưu ý về API Key</p>
+                            <ul class="list-disc list-inside space-y-1 text-xs">
+                                <li>Mỗi drone chỉ có thể có <strong class="text-white">1 API Key active</strong> tại một thời điểm</li>
+                                <li>API Key được tạo thông qua kết nối TCP đã xác thực với Router</li>
+                                <li>Key hết hạn hoặc bị hủy sẽ ngắt kết nối user ngay lập tức</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Toast Notification -->
+        <div id="toast" class="fixed bottom-6 right-6 hidden animate-in">
+            <div class="bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 shadow-xl flex items-center gap-3">
+                <span id="toast-message" class="text-sm text-slate-200"></span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- State ---
+        let currentKey = null;
+        let keyVisible = false;
+
+        // --- Utility Functions ---
+        function resetButtons() {
+            // Reset request button
+            const requestBtn = document.getElementById('request-btn');
+            if (requestBtn) {
+                requestBtn.disabled = false;
+                requestBtn.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                    Tạo API Key
+                `;
+            }
+            
+            // Reset revoke button
+            const revokeBtn = document.getElementById('revoke-btn');
+            if (revokeBtn) {
+                revokeBtn.disabled = false;
+                revokeBtn.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                    Hủy API Key
+                `;
+            }
+        }
+
+        // --- API Functions ---
+        async function checkStatus(forceRefresh = false) {
+            showState('loading');
+            
+            try {
+                const url = '/api/v1/drone/api-key/status' + (forceRefresh ? '?refresh=1' : '');
+                const response = await fetch(url);
+                
+                // Check response status first
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                // Get text first to debug JSON parsing issues
+                const text = await response.text();
+                
+                if (!text) {
+                    throw new Error('Empty response from server');
+                }
+                
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (parseErr) {
+                    console.error('JSON parse error. Response text:', text);
+                    throw new Error(`Invalid JSON response: ${parseErr.message}`);
+                }
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                if (data.has_active_key) {
+                    currentKey = {
+                        apiKey: data.api_key || null,
+                        createdAt: data.created_at,
+                        expiresAt: data.expires_at,
+                        userUUID: data.user_uuid,
+                        username: data.username,
+                        userActiveAt: data.user_active_at
+                    };
+                    showState('has-key');
+                    updateKeyDisplay();
+                } else {
+                    currentKey = null;
+                    showState('no-key');
+                }
+                
+                // Reset buttons to normal state
+                resetButtons();
+            } catch (error) {
+                console.error('Error checking status:', error);
+                showError(error.message);
+            }
+        }
+
+        async function requestAPIKey() {
+            const btn = document.getElementById('request-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading">Đang tạo...</span>';
+            
+            try {
+                const response = await fetch('/api/v1/drone/api-key/request', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ expiration_hours: 24 })
+                });
+                
+                const text = await response.text();
+                let data;
+                
+                try {
+                    data = JSON.parse(text);
+                } catch (parseErr) {
+                    console.error('JSON parse error. Response text:', text);
+                    throw new Error(`Invalid JSON response: ${parseErr.message}`);
+                }
+                
+                if (!response.ok) {
+                    throw new Error(data.error || `Failed to request API key (HTTP ${response.status})`);
+                }
+                
+                currentKey = {
+                    apiKey: data.api_key,
+                    createdAt: data.created_at || new Date().toISOString(),
+                    expiresAt: data.expires_at,
+                    userUUID: null,
+                    username: null,
+                    userActiveAt: null
+                };
+                
+                showState('has-key');
+                updateKeyDisplay();
+                resetButtons(); // Reset all buttons to normal state
+                showToast('✅ API Key đã được tạo thành công!');
+                
+            } catch (error) {
+                console.error('Error requesting API key:', error);
+                showToast('❌ ' + error.message);
+                btn.disabled = false;
+                btn.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                    Tạo API Key
+                `;
+            }
+        }
+
+        async function revokeAPIKey() {
+            if (!confirm('Bạn có chắc chắn muốn hủy API Key?\n\nHành động này sẽ ngắt kết nối user ngay lập tức và xóa key khỏi hệ thống.')) {
+                return;
+            }
+            
+            const btn = document.getElementById('revoke-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading">Đang xóa...</span>';
+            
+            try {
+                // Use delete endpoint to completely remove from database
+                const response = await fetch('/api/v1/drone/api-key/delete', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const text = await response.text();
+                let data;
+                
+                try {
+                    data = JSON.parse(text);
+                } catch (parseErr) {
+                    console.error('JSON parse error. Response text:', text);
+                    throw new Error(`Invalid JSON response: ${parseErr.message}`);
+                }
+                
+                if (!response.ok) {
+                    throw new Error(data.error || `Failed to delete API key (HTTP ${response.status})`);
+                }
+                
+                currentKey = null;
+                showState('no-key');
+                resetButtons(); // Reset all buttons to normal state
+                showToast('✅ API Key đã được xóa!');
+                
+            } catch (error) {
+                console.error('Error deleting API key:', error);
+                showToast('❌ ' + error.message);
+                btn.disabled = false;
+                btn.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                    Hủy API Key
+                `;
+            }
+        }
+
+        // --- UI Functions ---
+        function showState(state) {
+            const states = ['loading', 'no-key', 'has-key', 'error'];
+            states.forEach(s => {
+                const el = document.getElementById(s + '-state');
+                if (el) {
+                    el.classList.toggle('hidden', s !== state);
+                }
+            });
+        }
+
+        function showError(message) {
+            document.getElementById('error-message').textContent = message;
+            showState('error');
+        }
+
+        function updateKeyDisplay() {
+            if (!currentKey) return;
+            
+            // API Key display
+            const keyDisplay = document.getElementById('api-key-display');
+            if (keyVisible && currentKey.apiKey) {
+                keyDisplay.textContent = currentKey.apiKey;
+            } else {
+                keyDisplay.textContent = '••••••••••••••••••••••••••••••••';
+            }
+            
+            // Timestamps
+            if (currentKey.createdAt) {
+                document.getElementById('created-at').textContent = formatDate(currentKey.createdAt);
+            }
+            if (currentKey.expiresAt) {
+                document.getElementById('expires-at').textContent = formatDate(currentKey.expiresAt);
+                document.getElementById('time-remaining').textContent = getTimeRemaining(currentKey.expiresAt);
+            }
+            
+            // User status
+            const userStatus = document.getElementById('user-status');
+            if (currentKey.username && currentKey.userActiveAt) {
+                const userDisplay = currentKey.username || (currentKey.userUUID ? `${currentKey.userUUID.substring(0, 8)}...` : 'Unknown');
+                userStatus.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-emerald-400"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    <div class="flex flex-col gap-0.5">
+                        <span class="text-emerald-400 font-semibold">${userDisplay}</span>
+                        <span class="text-slate-500 text-xs">${formatDate(currentKey.userActiveAt)}</span>
+                    </div>
+                `;
+            } else {
+                userStatus.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <span>Chờ user kết nối...</span>
+                `;
+            }
+        }
+
+        function toggleKeyVisibility() {
+            keyVisible = !keyVisible;
+            
+            document.getElementById('eye-icon').classList.toggle('hidden', keyVisible);
+            document.getElementById('eye-off-icon').classList.toggle('hidden', !keyVisible);
+            
+            updateKeyDisplay();
+        }
+
+        function copyAPIKey() {
+            if (currentKey && currentKey.apiKey) {
+                navigator.clipboard.writeText(currentKey.apiKey);
+                showToast('📋 Đã copy API Key!');
+            } else {
+                showToast('⚠️ Không thể copy - Key đã bị ẩn');
+            }
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').textContent = message;
+            toast.classList.remove('hidden');
+            
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3000);
+        }
+
+        // --- Helpers ---
+        function formatDate(isoString) {
+            if (!isoString) return '--';
+            return new Date(isoString).toLocaleString('vi-VN', {
+                day: '2-digit', month: '2-digit', year: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
+        }
+
+        function getTimeRemaining(expiresAt) {
+            const total = Date.parse(expiresAt) - Date.now();
+            if (total <= 0) return "⚠️ Đã hết hạn";
+            
+            const days = Math.floor(total / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((total / (1000 * 60 * 60)) % 24);
+            const minutes = Math.floor((total / 1000 / 60) % 60);
+
+            if (days > 0) return `⏱️ Còn ${days} ngày ${hours} giờ`;
+            if (hours > 0) return `⏱️ Còn ${hours} giờ ${minutes} phút`;
+            return `⚠️ Còn ${minutes} phút`;
+        }
+
+        // --- Auto-refresh ---
+        function startAutoRefresh() {
+            // Refresh every 30 seconds
+            setInterval(() => {
+                if (currentKey) {
+                    updateKeyDisplay(); // Update time remaining
+                }
+            }, 30000);
+            
+            // Full status check every 2 minutes
+            setInterval(checkStatus, 120000);
+        }
+
+        // --- Initialize ---
+        function init() {
+            resetButtons(); // Reset buttons on page load
+            checkStatus(true); // Force refresh on page load
+            startAutoRefresh();
+        }
+
+        init();
+    </script>
+</body>
+</html>
