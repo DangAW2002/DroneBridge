@@ -739,12 +739,12 @@ func (f *Forwarder) monitorIPChange() {
 			// Close current sender node
 			f.senderNode.Close()
 
-			// Create new sender node
+			// Create new sender node with custom dialect (including SESSION_HEARTBEAT)
 			node, err := gomavlib.NewNode(gomavlib.NodeConf{
 				Endpoints: []gomavlib.EndpointConf{
 					gomavlib.EndpointUDPClient{Address: f.cfg.GetAddress()},
 				},
-				Dialect:     common.Dialect,
+				Dialect:     mavlink_custom.GetCombinedDialect(),
 				OutVersion:  gomavlib.V2,
 				OutSystemID: 1, // Not actually used since we forward raw frames
 			})
@@ -755,6 +755,11 @@ func (f *Forwarder) monitorIPChange() {
 
 			f.senderNode = node
 			logger.Info("[IP_MONITOR] Sender reconnected on IP: %s", currentIP)
+
+			// Also force TCP auth client to reconnect immediately
+			if f.authClient != nil {
+				f.authClient.ForceReconnect()
+			}
 
 			f.mu.Lock()
 			f.isHealthy = true

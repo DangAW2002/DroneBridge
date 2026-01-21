@@ -838,3 +838,15 @@ func (c *Client) reconnectTCP() error {
 	log.Printf("[RECONNECT] ✓ TCP reconnected successfully from local IP: %s", currentLocalIP)
 	return nil
 }
+
+// ForceReconnect closes the current connection to trigger an immediate reconnect
+func (c *Client) ForceReconnect() {
+	c.tcpMu.Lock()
+	defer c.tcpMu.Unlock()
+
+	if c.conn != nil {
+		log.Println("[AUTH] ForceReconnect: Forcing TCP reconnection due to network change...")
+		c.conn.Close()
+		c.conn = nil
+	}
+}
