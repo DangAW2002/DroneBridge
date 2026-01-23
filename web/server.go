@@ -181,6 +181,24 @@ func (b *MAVLinkBridge) GetSystemID() byte {
 	return b.pixhawkSysID
 }
 
+// GetPixhawkSystemID returns the actual Pixhawk system ID after connection is established
+// This function should be used instead of hardcoding system IDs (like 1) because:
+// 1. The actual system ID is detected from the Pixhawk heartbeat
+// 2. Returns 1 as fallback if not yet connected (standard PX4 default)
+// 3. Ensures all MAVLink operations use the correct, dynamic system ID
+//
+// Flow:
+// - Forwarder receives heartbeat from Pixhawk -> captures sysID
+// - Forwarder calls HandleHeartbeat(sysID) -> web bridge stores the ID
+// - Web server can retrieve it via GetPixhawkSystemID() for parameter operations
+// - Forwarder logs actual sysID for verification
+func GetPixhawkSystemID() byte {
+	if bridge == nil {
+		return 1 // Fallback to default if bridge not initialized
+	}
+	return bridge.GetSystemID()
+}
+
 // RequestParameterList sends PARAM_REQUEST_LIST to Pixhawk
 func (b *MAVLinkBridge) RequestParameterList() error {
 	if b == nil || b.node == nil {

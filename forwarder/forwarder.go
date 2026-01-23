@@ -42,6 +42,13 @@ func getMessageTypeName(msg interface{}) string {
 	return fullType
 }
 
+// getPixhawkSystemID returns the actual Pixhawk system ID from the web bridge
+// This ensures we use the dynamic system ID detected from the Pixhawk heartbeat
+// instead of hardcoding it. Falls back to 1 if not yet connected.
+func getPixhawkSystemID() uint8 {
+	return web.GetPixhawkSystemID()
+}
+
 // Forwarder handles receiving real MAVLink messages from Pixhawk and forwarding to server
 type Forwarder struct {
 	cfg          *config.Config
@@ -50,6 +57,10 @@ type Forwarder struct {
 	authClient   *auth.Client
 	stopCh       chan struct{}
 	previousIP   string // Track previous local IP for change detection
+
+	// Pixhawk connection tracking
+	pixhawkConnected chan struct{} // Signal when first heartbeat from Pixhawk received
+	pixhawkOnce      sync.Once     // Ensure pixhawkConnected is closed only once
 
 	// Network health
 	isHealthy    bool
@@ -67,6 +78,9 @@ type Forwarder struct {
 	// Deduplication - track seen messages by sequence number
 	lastSeqNum map[uint8]uint8 // SystemID -> last sequence number
 	seqMu      sync.RWMutex
+
+	// Verbose mode for detailed message parsing
+	verboseMode bool
 }
 
 // getLocalIP returns the current local IP address used for outbound connections
@@ -308,25 +322,9 @@ func setupInterfaceIP(ifaceName, ipAddr, subnet string) error {
 }
 
 // New creates a new forwarder instance
-func New(cfg *config.Config, authClient *auth.Client) (*Forwarder, error) {
-	// Use provided auth client (already created and authenticated in main.go)
-	// This ensures both web server and forwarder use the SAME session token
-	if cfg.Auth.Enabled && authClient == nil {
-		logger.Warn("Authentication enabled but no authClient provided - creating new one")
-		authClient = auth.NewClient(
-			cfg.Auth.Host,
-			cfg.Auth.Port,
-			cfg.Auth.UUID,
-			cfg.Auth.SharedSecret,
-			cfg.Auth.KeepaliveInterval,
-		)
-	} else if cfg.Auth.Enabled {
-		logger.Info("Authentication enabled, using shared authClient for drone UUID %s",
-			cfg.Auth.UUID)
-	} else {
-		logger.Warn("Authentication disabled - running in insecure mode")
-	}
-
+// NewListener creates only the listener node to receive from Pixhawk
+// This is called BEFORE connecting to Pixhawk to capture its System ID
+func NewListener(cfg *config.Config) (*gomavlib.Node, error) {
 	// Get ethernet IP for UDP broadcast
 	localEthIP, broadcastEthIP, ifaceName, ethErr := getEthernetIP(cfg)
 
@@ -358,16 +356,83 @@ func New(cfg *config.Config, authClient *auth.Client) (*Forwarder, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create listener MAVLink node: %w", err)
 	}
-	logger.Info("MAVLink listener created on port %d", cfg.Network.LocalListenPort)
+	logger.Info("[LISTENER] MAVLink listener created on port %d", cfg.Network.LocalListenPort)
+	return listenerNode, nil
+}
 
-	// Create sender node to forward to server
+// New creates a new forwarder instance with BOTH listener and sender nodes
+// IMPORTANT: Call this AFTER Pixhawk has connected, so OutSystemID matches actual drone SysID
+// If listenerNode is provided, it will be reused (don't create a new one)
+func New(cfg *config.Config, authClient *auth.Client, listenerNode *gomavlib.Node) (*Forwarder, error) {
+	// Use provided auth client (already created and authenticated in main.go)
+	// This ensures both web server and forwarder use the SAME session token
+	if cfg.Auth.Enabled && authClient == nil {
+		logger.Warn("Authentication enabled but no authClient provided - creating new one")
+		authClient = auth.NewClient(
+			cfg.Auth.Host,
+			cfg.Auth.Port,
+			cfg.Auth.UUID,
+			cfg.Auth.SharedSecret,
+			cfg.Auth.KeepaliveInterval,
+		)
+	} else if cfg.Auth.Enabled {
+		logger.Info("Authentication enabled, using shared authClient for drone UUID %s",
+			cfg.Auth.UUID)
+	} else {
+		logger.Warn("Authentication disabled - running in insecure mode")
+	}
+
+	// Reuse listener node if provided, otherwise create a new one
+	var err error
+	if listenerNode == nil {
+		// Get ethernet IP for UDP broadcast
+		localEthIP, broadcastEthIP, ifaceName, ethErr := getEthernetIP(cfg)
+
+		// Build endpoints list
+		endpoints := []gomavlib.EndpointConf{
+			gomavlib.EndpointUDPServer{Address: fmt.Sprintf("0.0.0.0:%d", cfg.Network.LocalListenPort)},
+		}
+
+		// Only add UDP broadcast endpoint if ethernet interface was found
+		if ethErr == nil && localEthIP != "" && broadcastEthIP != "" {
+			endpoints = append(endpoints, gomavlib.EndpointUDPBroadcast{
+				BroadcastAddress: fmt.Sprintf("%s:%d", broadcastEthIP, cfg.Network.LocalListenPort),
+				LocalAddress:     fmt.Sprintf("%s:%d", localEthIP, cfg.Network.LocalListenPort+1),
+			})
+			logger.Info("[NETWORK] UDP Broadcast enabled on %s: Local=%s:%d, Broadcast=%s:%d",
+				ifaceName, localEthIP, cfg.Network.LocalListenPort+1, broadcastEthIP, cfg.Network.LocalListenPort)
+		} else {
+			logger.Warn("[NETWORK] UDP Broadcast disabled: %v", ethErr)
+			logger.Info("[NETWORK] Running with UDP Server only on 0.0.0.0:%d", cfg.Network.LocalListenPort)
+		}
+
+		// Create listener node to receive from Pixhawk
+		listenerNode, err = gomavlib.NewNode(gomavlib.NodeConf{
+			Endpoints:   endpoints,
+			Dialect:     mavlink_custom.GetCombinedDialect(),
+			OutVersion:  gomavlib.V2,
+			OutSystemID: 255, // Ground station ID
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create listener MAVLink node: %w", err)
+		}
+		logger.Info("MAVLink listener created on port %d", cfg.Network.LocalListenPort)
+	} else {
+		logger.Info("[FORWARDER] Reusing existing listener node")
+	}
+
+	// Get actual Pixhawk System ID from web bridge (was captured from heartbeat)
+	pixhawkSysID := web.GetPixhawkSystemID()
+	logger.Info("[FORWARDER] Using Pixhawk System ID: %d for OutSystemID", pixhawkSysID)
+
+	// Create sender node to forward to server WITH correct system ID
 	senderNode, err := gomavlib.NewNode(gomavlib.NodeConf{
 		Endpoints: []gomavlib.EndpointConf{
 			gomavlib.EndpointUDPClient{Address: cfg.GetAddress()},
 		},
 		Dialect:     mavlink_custom.GetCombinedDialect(),
 		OutVersion:  gomavlib.V2,
-		OutSystemID: 1, // Not actually used since we forward raw frames
+		OutSystemID: pixhawkSysID, // Use actual Pixhawk sys_id instead of hardcoded 1
 	})
 	if err != nil {
 		listenerNode.Close()
@@ -389,10 +454,12 @@ func New(cfg *config.Config, authClient *auth.Client) (*Forwarder, error) {
 		authClient:       authClient,
 		stopCh:           make(chan struct{}),
 		previousIP:       localIP,
+		pixhawkConnected: make(chan struct{}),
 		isHealthy:        true,
 		forceCheckCh:     make(chan struct{}, 1),
 		udpHeartbeatSent: make(chan struct{}, 1),
 		lastSeqNum:       make(map[uint8]uint8),
+		verboseMode:      cfg.Log.Verbose,
 	}
 
 	// Wire up network error callback
@@ -420,18 +487,47 @@ func (f *Forwarder) GetListenerNode() *gomavlib.Node {
 	return f.listenerNode
 }
 
+// WaitForPixhawkConnection waits for first heartbeat from Pixhawk within timeout
+// Returns true if connected, false if timeout
+func (f *Forwarder) WaitForPixhawkConnection(timeout time.Duration) bool {
+	select {
+	case <-f.pixhawkConnected:
+		return true
+	case <-time.After(timeout):
+		return false
+	}
+}
+
+// SetAuthClient sets the auth client after forwarder creation
+func (f *Forwarder) SetAuthClient(authClient *auth.Client) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.authClient = authClient
+	if f.authClient != nil {
+		// Wire up network error callback
+		f.authClient.OnNetworkError = func() {
+			f.mu.Lock()
+			if f.isHealthy {
+				logger.Warn("[NETWORK] Network error detected via Auth Client - Marking unhealthy")
+				f.isHealthy = false
+				// Trigger immediate IP check
+				select {
+				case f.forceCheckCh <- struct{}{}:
+				default:
+				}
+			}
+			f.mu.Unlock()
+		}
+	}
+}
+
 // Start begins the forwarder
 func (f *Forwarder) Start() error {
 	logger.Info("Starting MAVLink forwarder...")
 
-	// Authenticate first if enabled
-	if f.authClient != nil {
-		logger.Info("Authenticating with server...")
-		if err := f.authClient.Start(); err != nil {
-			return fmt.Errorf("authentication failed: %w", err)
-		}
-		logger.Info("Authentication successful - ready to forward MAVLink packets!")
-	}
+	// NOTE: Auth client is already started in main.go before calling fwd.Start()
+	// Do NOT call authClient.Start() here to avoid duplicate TCP connections
+	// The auth client is set via SetAuthClient() after forwarder creation
 
 	// Start IP change monitor
 	go f.monitorIPChange()
@@ -451,12 +547,15 @@ func (f *Forwarder) Start() error {
 	// Start receiving and forwarding messages
 	go f.receiveAndForward()
 	go f.receiveFromServer()
-	go f.sendHeartbeat()
+	// DISABLED: GCS heartbeat causes MAV ID confusion (SystemID=1 conflicts with drone)
+	// DroneBridge should only forward messages, not generate its own heartbeat
+	// go f.sendHeartbeat()
 	go f.sendMavlinkSessionHeartbeat() // MAVLink-wrapped session heartbeat for IP:Port sync
 
 	logger.Info("Forwarder started - listening on port %d, forwarding to %s",
 		f.cfg.Network.LocalListenPort, f.cfg.GetAddress())
 	return nil
+
 }
 
 // Stop stops the forwarder
@@ -528,12 +627,20 @@ func (f *Forwarder) receiveAndForward() {
 				// Log specific message types at INFO level (reduced frequency)
 				switch m := msg.(type) {
 				case *common.MessageHeartbeat:
+					// Signal on first heartbeat from Pixhawk
+					f.pixhawkOnce.Do(func() {
+						close(f.pixhawkConnected)
+						logger.Info("[PIXHAWK_CONNECTED] ✅ First heartbeat received from Pixhawk (SysID: %d)", sysID)
+					})
+
 					if now.Sub(f.lastHeartbeatLog) > 30*time.Second {
 						logger.Info("[PIXHAWK] Heartbeat: Type=%d, Mode=%d, Status=%d", m.Type, m.BaseMode, m.SystemStatus)
 						f.lastHeartbeatLog = now
 					}
-					// Notify web server of connected Pixhawk
+					// Notify web server of connected Pixhawk - this captures the actual system ID
 					web.HandleHeartbeat(sysID)
+					actualSysID := web.GetPixhawkSystemID()
+					logger.Debug("[SYSID] Detected Pixhawk System ID: %d (using for MAVLink operations)", actualSysID)
 				case *common.MessageGpsRawInt:
 					if now.Sub(f.lastGPSLog) > 30*time.Second {
 						logger.Info("[PIXHAWK] GPS: Fix=%d, Lat=%.6f, Lon=%.6f, Sats=%d",
@@ -581,9 +688,82 @@ func (f *Forwarder) receiveAndForward() {
 	}
 }
 
+// parseMessageVerbose provides detailed field-by-field parsing of MAVLink messages from server
+func (f *Forwarder) parseMessageVerbose(msg interface{}, sysID uint8) {
+	switch m := msg.(type) {
+	case *common.MessageHeartbeat:
+		logger.Info("[VERBOSE] HEARTBEAT from server (SysID: %d) - Type=%d, Autopilot=%d, BaseMode=%d, CustomMode=%d, SystemStatus=%d",
+			sysID, m.Type, m.Autopilot, m.BaseMode, m.CustomMode, m.SystemStatus)
+
+	case *common.MessageSysStatus:
+		logger.Info("[VERBOSE] SYS_STATUS from server - Load=%d%%, Battery=%dmV (%d%%), CommDrop=%d, CommErrors=%d, ErrorsCount1=%d",
+			m.Load/10, m.VoltageBattery, m.BatteryRemaining,
+			m.DropRateComm, m.ErrorsComm, m.ErrorsCount1)
+
+	case *common.MessageGpsRawInt:
+		logger.Info("[VERBOSE] GPS_RAW_INT from server - Fix=%d, Lat=%.7f, Lon=%.7f, Alt=%d cm, Sats=%d, HDOP=%d, VDOP=%d, Vel=%d cm/s, Cog=%d°",
+			m.FixType, float64(m.Lat)/1e7, float64(m.Lon)/1e7, m.Alt, m.SatellitesVisible,
+			m.Eph, m.Epv, m.Vel, m.Cog)
+
+	case *common.MessageAttitude:
+		logger.Info("[VERBOSE] ATTITUDE from server - Roll=%.2f rad, Pitch=%.2f rad, Yaw=%.2f rad, RollSpeed=%.2f rad/s, PitchSpeed=%.2f rad/s, YawSpeed=%.2f rad/s, TimeBootMs=%d ms",
+			m.Roll, m.Pitch, m.Yaw, m.Rollspeed, m.Pitchspeed, m.Yawspeed, m.TimeBootMs)
+
+	case *common.MessageLocalPositionNed:
+		logger.Info("[VERBOSE] LOCAL_POSITION_NED from server - X=%.2f m, Y=%.2f m, Z=%.2f m, Vx=%.2f m/s, Vy=%.2f m/s, Vz=%.2f m/s, TimeBootMs=%d ms",
+			m.X, m.Y, m.Z, m.Vx, m.Vy, m.Vz, m.TimeBootMs)
+
+	case *common.MessageGlobalPositionInt:
+		logger.Info("[VERBOSE] GLOBAL_POSITION_INT from server - Lat=%.7f°, Lon=%.7f°, Alt=%d mm, RelAlt=%d mm, Vx=%d cm/s, Vy=%d cm/s, Vz=%d cm/s, Hdg=%d cdeg, TimeBootMs=%d ms",
+			float64(m.Lat)/1e7, float64(m.Lon)/1e7, m.Alt, m.RelativeAlt, m.Vx, m.Vy, m.Vz, m.Hdg, m.TimeBootMs)
+
+	case *common.MessageVfrHud:
+		logger.Info("[VERBOSE] VFR_HUD from server - Airspeed=%.2f m/s, Groundspeed=%.2f m/s, Heading=%d°, Throttle=%d%%, Altitude=%.2f m, ClimbRate=%.2f m/s",
+			m.Airspeed, m.Groundspeed, m.Heading, m.Throttle, m.Alt, m.Climb)
+
+	case *common.MessageBatteryStatus:
+		logger.Info("[VERBOSE] BATTERY_STATUS from server - BatType=%d, ID=%d, BatFunction=%d, Temperature=%d°C, Voltage=%d mV, CurrentBattery=%d mA, ChargeState=%d, Cells=[%d, %d, %d, %d, %d, %d] mV",
+			m.Type, m.Id, m.BatteryFunction, m.Temperature, m.Voltages[0], m.CurrentBattery, m.ChargeState,
+			m.Voltages[0], m.Voltages[1], m.Voltages[2], m.Voltages[3], m.Voltages[4], m.Voltages[5])
+
+	case *common.MessageServoOutputRaw:
+		logger.Info("[VERBOSE] SERVO_OUTPUT_RAW from server - ServoPort=%d, TimeUsec=%d us, Outputs=[%d, %d, %d, %d, %d, %d, %d, %d]",
+			m.Port, m.TimeUsec, m.Servo1Raw, m.Servo2Raw, m.Servo3Raw, m.Servo4Raw, m.Servo5Raw, m.Servo6Raw, m.Servo7Raw, m.Servo8Raw)
+
+	case *common.MessageMissionItem:
+		logger.Info("[VERBOSE] MISSION_ITEM from server - Seq=%d, Frame=%d, Command=%d, Current=%d, Autocontinue=%d, Params=[%.2f, %.2f, %.2f, %.2f], X=%.7f, Y=%.7f, Z=%.2f",
+			m.Seq, m.Frame, m.Command, m.Current, m.Autocontinue,
+			m.Param1, m.Param2, m.Param3, m.Param4, m.X, m.Y, m.Z)
+
+	case *common.MessageParamValue:
+		logger.Info("[VERBOSE] PARAM_VALUE from server - ParamId=%s, ParamValue=%.2f, ParamType=%d, ParamCount=%d, ParamIndex=%d",
+			m.ParamId, m.ParamValue, m.ParamType, m.ParamCount, m.ParamIndex)
+
+	case *common.MessageCommandAck:
+		logger.Info("[VERBOSE] COMMAND_ACK from server - Command=%d, Result=%d, Progress=%d, ResultParam2=%d",
+			m.Command, m.Result, m.Progress, m.ResultParam2)
+
+	case *common.MessageSetMode:
+		logger.Info("[VERBOSE] SET_MODE from server - TargetSystem=%d, BaseMode=%d, CustomMode=%d",
+			m.TargetSystem, m.BaseMode, m.CustomMode)
+
+	case *common.MessageManualControl:
+		logger.Info("[VERBOSE] MANUAL_CONTROL from server - Target=%d, Pitch=%d, Roll=%d, Throttle=%d, Yaw=%d, Buttons=%d",
+			m.Target, m.X, m.Y, m.Z, m.R, m.Buttons)
+
+	default:
+		// Generic message - just log the type name
+		msgTypeName := getMessageTypeName(msg)
+		logger.Debug("[VERBOSE] %s from server (SysID: %d) - message type not specifically parsed",
+			msgTypeName, sysID)
+	}
+}
+
 // receiveFromServer listens for incoming MAVLink messages from server and logs them
 func (f *Forwarder) receiveFromServer() {
 	eventCh := f.senderNode.Events()
+	receivedCount := 0
+	lastLogTime := time.Now()
 
 	for {
 		select {
@@ -595,8 +775,22 @@ func (f *Forwarder) receiveFromServer() {
 				// Received a MAVLink message from server
 				msg := e.Message()
 				msgTypeName := getMessageTypeName(msg)
+				sysID := e.SystemID()
+				receivedCount++
 
-				logger.Debug("[SERVER->PIXHAWK] %s (SysID: %d)", msgTypeName, e.SystemID())
+				// Log statistics every 1000 messages or every 10 seconds
+				now := time.Now()
+				if receivedCount%1000 == 0 || now.Sub(lastLogTime) > 10*time.Second {
+					logger.Info("[SERVER->PIXHAWK] Received %d messages from server", receivedCount)
+					lastLogTime = now
+				}
+
+				// Verbose mode: parse and log detailed message fields
+				if f.verboseMode {
+					f.parseMessageVerbose(msg, sysID)
+				}
+
+				logger.Debug("[SERVER->PIXHAWK] %s (SysID: %d)", msgTypeName, sysID)
 
 				// Forward message to Pixhawk
 				if err := f.listenerNode.WriteMessageAll(msg); err != nil {
@@ -746,7 +940,7 @@ func (f *Forwarder) monitorIPChange() {
 				},
 				Dialect:     mavlink_custom.GetCombinedDialect(),
 				OutVersion:  gomavlib.V2,
-				OutSystemID: 1, // Not actually used since we forward raw frames
+				OutSystemID: 1, // Placeholder: will use actual Pixhawk sys_id from web.GetPixhawkSystemID() when available
 			})
 			if err != nil {
 				logger.Error("[IP_MONITOR] Error recreating sender node: %v", err)

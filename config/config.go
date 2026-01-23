@@ -18,17 +18,21 @@ type Config struct {
 
 // LogConfig contains logging settings
 type LogConfig struct {
-	Level string `yaml:"level"` // debug, info, warn, error
+	Level           string `yaml:"level"`            // debug, info, warn, error
+	Verbose         bool   `yaml:"verbose"`          // Enable verbose parsing of received messages
+	TimestampFormat string `yaml:"timestamp_format"` // "time" or "unix"
 }
 
 // EthernetConfig contains ethernet interface settings for Pixhawk connection
 type EthernetConfig struct {
-	Interface   string `yaml:"interface"`    // Interface name (eth0, end0, etc.) - empty for auto-detect
-	LocalIP     string `yaml:"local_ip"`     // Local IP to bind - empty for auto-detect
-	BroadcastIP string `yaml:"broadcast_ip"` // Broadcast IP - empty for auto-detect
-	PixhawkIP   string `yaml:"pixhawk_ip"`   // Pixhawk IP address for filtering
-	AutoSetup   bool   `yaml:"auto_setup"`   // Auto configure IP if not set
-	Subnet      string `yaml:"subnet"`       // Subnet mask (e.g., "24" for /24)
+	Interface                string `yaml:"interface"`                  // Interface name (eth0, end0, etc.) - empty for auto-detect
+	LocalIP                  string `yaml:"local_ip"`                   // Local IP to bind - empty for auto-detect
+	BroadcastIP              string `yaml:"broadcast_ip"`               // Broadcast IP - empty for auto-detect
+	PixhawkIP                string `yaml:"pixhawk_ip"`                 // Pixhawk IP address for filtering
+	AutoSetup                bool   `yaml:"auto_setup"`                 // Auto configure IP if not set
+	Subnet                   string `yaml:"subnet"`                     // Subnet mask (e.g., "24" for /24)
+	AllowMissingPixhawk      bool   `yaml:"allow_missing_pixhawk"`      // DEBUG: Allow auth without Pixhawk connection (for testing)
+	PixhawkConnectionTimeout int    `yaml:"pixhawk_connection_timeout"` // Timeout in seconds to wait for Pixhawk connection (default: 30s)
 }
 
 // AuthConfig contains authentication settings
@@ -144,6 +148,9 @@ func Load(filename string) (*Config, error) {
 	}
 	if cfg.Ethernet.Subnet == "" {
 		cfg.Ethernet.Subnet = "24"
+	}
+	if cfg.Ethernet.PixhawkConnectionTimeout <= 0 {
+		cfg.Ethernet.PixhawkConnectionTimeout = 30 // Default 30 seconds
 	}
 
 	if err := cfg.Validate(); err != nil {

@@ -7,6 +7,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/bluenviron/gomavlib/v3"
+
 	"DroneBridge/auth"
 	"DroneBridge/config"
 	"DroneBridge/forwarder"
@@ -35,6 +37,11 @@ func main() {
 		logger.SetLevelFromString(cfg.Log.Level)
 	}
 
+	// Set timestamp format from config
+	if cfg.Log.TimestampFormat != "" {
+		logger.SetTimestampFormat(cfg.Log.TimestampFormat)
+	}
+
 	logger.Info("Configuration loaded successfully (Log level: %s)", logger.GetLevelString())
 
 	// Create single auth client instance - will be reused for both registration and normal operation
@@ -46,7 +53,7 @@ func main() {
 		cfg.Auth.KeepaliveInterval,
 	)
 
-	// Handle registration mode - use the same authClient
+	// Handle registration mode - SEPARATE from auth
 	if *register {
 		logger.Info("🚀 STARTING REGISTRATION PROCESS")
 		logger.Info("Connecting to %s:%d", cfg.Auth.Host, cfg.Auth.Port)
@@ -57,12 +64,87 @@ func main() {
 
 		logger.Info("✅ Registration completed successfully!")
 		logger.Info("Secret key has been saved to .drone_secret")
-		logger.Info("Now starting normal operation...")
-		// Continue to normal operation with same authClient (connection kept alive)
+		logger.Info("Registration connection will be closed, then proceeding with authentication...")
+
+		// IMPORTANT: Registration creates its own TCP connection and closes it automatically
+		// We will create a NEW auth connection below (authClient.Start())
+		// This ensures registration and auth are completely separate
 	}
 
 	logger.Info("Listening on port %d, forwarding to %s",
 		cfg.Network.LocalListenPort, cfg.GetAddress())
+
+	// STEP 0: Create listener node ONLY (to listen for Pixhawk, no sender yet)
+	logger.Info("[STARTUP] Creating MAVLink listener for Pixhawk...")
+	listenerNode, err := forwarder.NewListener(cfg)
+	if err != nil {
+		logger.Fatal("Failed to create listener: %v", err)
+	}
+
+	// Initialize MAVLink bridge EARLY with listener node (for web access)
+	web.InitMAVLinkBridge(listenerNode)
+
+	// STEP 1: Wait for Pixhawk connection by starting a minimal forwarder loop
+	// This just listens and captures System ID from heartbeat
+	logger.Info("[STARTUP] ⏳ Waiting for Pixhawk heartbeat... (timeout: %ds)", cfg.Ethernet.PixhawkConnectionTimeout)
+	pixhawkSysID := uint8(0)
+	pixhawkConnected := false
+	pixhawkReadyCh := make(chan struct{}) // Channel to signal when done (connected or timeout)
+
+	// Start listening on the listener node
+	go func() {
+		eventCh := listenerNode.Events()
+		timeout := time.NewTimer(time.Duration(cfg.Ethernet.PixhawkConnectionTimeout) * time.Second)
+		defer timeout.Stop()
+
+		for {
+			select {
+			case <-timeout.C:
+				pixhawkReadyCh <- struct{}{} // Signal timeout
+				return
+			case event := <-eventCh:
+				if frame, ok := event.(*gomavlib.EventFrame); ok {
+					pixhawkSysID = frame.SystemID()
+					pixhawkConnected = true
+					logger.Info("[PIXHAWK_CONNECTED] ✅ First heartbeat received from Pixhawk (SysID: %d)", pixhawkSysID)
+					web.HandleHeartbeat(pixhawkSysID)
+					pixhawkReadyCh <- struct{}{} // Signal connected immediately
+					return
+				}
+			}
+		}
+	}()
+
+	// Wait for signal (either connected or timeout)
+	<-pixhawkReadyCh
+
+	if pixhawkConnected {
+		logger.Info("[STARTUP] ✅ Pixhawk connected successfully!")
+		logger.Info("[STARTUP] Pixhawk System ID: %d", pixhawkSysID)
+	} else {
+		if cfg.Ethernet.AllowMissingPixhawk {
+			logger.Warn("[STARTUP] ⚠️  Pixhawk connection timeout, but AllowMissingPixhawk=true, continuing...")
+			logger.Warn("[STARTUP] ⚠️  Running in DEBUG mode without actual Pixhawk connection!")
+		} else {
+			logger.Fatal("[STARTUP] ❌ Pixhawk connection failed. Set 'allow_missing_pixhawk: true' in config to skip this requirement.")
+		}
+	}
+
+	// STEP 2: Now create full forwarder (with sender node using correct SysID)
+	logger.Info("[STARTUP] ✈️  Creating forwarder with correct System ID...")
+	fwd, err := forwarder.New(cfg, nil, listenerNode) // Pass listenerNode to reuse it
+	if err != nil {
+		logger.Fatal("Failed to create forwarder: %v", err)
+	}
+
+	// STEP 3: Start forwarder
+	logger.Info("[STARTUP] Starting forwarder...")
+	if err := fwd.Start(); err != nil {
+		logger.Fatal("Failed to start forwarder: %v", err)
+	}
+
+	// STEP 4: Authenticate with server
+	logger.Info("[STARTUP] ✈️  Now proceeding with server authentication...")
 
 	// Start auth client
 	if err := authClient.Start(); err != nil {
@@ -85,19 +167,8 @@ func main() {
 	// Start web server with auth client and drone UUID
 	web.StartServer(cfg.Web.Port, authClient, cfg.Auth.UUID)
 
-	// Create forwarder with shared auth client
-	fwd, err := forwarder.New(cfg, authClient)
-	if err != nil {
-		logger.Fatal("Failed to create forwarder: %v", err)
-	}
-
-	// Initialize MAVLink bridge for web server to use (for parameter editing)
-	web.InitMAVLinkBridge(fwd.GetListenerNode())
-
-	// Start forwarder
-	if err := fwd.Start(); err != nil {
-		logger.Fatal("Failed to start forwarder: %v", err)
-	}
+	// Now set auth client on forwarder and re-wire callbacks
+	fwd.SetAuthClient(authClient)
 
 	// Wait for interrupt signal
 	sigCh := make(chan os.Signal, 1)

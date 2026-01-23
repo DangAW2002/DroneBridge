@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 )
 
 // Level represents logging level
@@ -34,14 +35,16 @@ var levelFromString = map[string]Level{
 
 // Logger is a leveled logger
 type Logger struct {
-	mu       sync.RWMutex
-	level    Level
-	logger   *log.Logger
+	mu          sync.RWMutex
+	level       Level
+	logger      *log.Logger
+	useUnixTime bool
 }
 
 var defaultLogger = &Logger{
-	level:  INFO,
-	logger: log.New(os.Stdout, "", log.LstdFlags),
+	level:       INFO,
+	logger:      log.New(os.Stdout, "", log.LstdFlags),
+	useUnixTime: false,
 }
 
 // SetLevel sets the global log level
@@ -56,6 +59,22 @@ func SetLevelFromString(levelStr string) {
 	if level, ok := levelFromString[strings.ToLower(levelStr)]; ok {
 		SetLevel(level)
 		defaultLogger.logger.Printf("[LOGGER] Log level set to %s", levelNames[level])
+	}
+}
+
+// SetTimestampFormat sets timestamp format ("time" or "unix")
+func SetTimestampFormat(format string) {
+	defaultLogger.mu.Lock()
+	defer defaultLogger.mu.Unlock()
+
+	if strings.ToLower(format) == "unix" {
+		defaultLogger.useUnixTime = true
+		defaultLogger.logger.SetFlags(0) // Remove default timestamp
+		defaultLogger.logger.Printf("[%d] [LOGGER] Timestamp format set to Unix", time.Now().Unix())
+	} else {
+		defaultLogger.useUnixTime = false
+		defaultLogger.logger.SetFlags(log.LstdFlags)
+		defaultLogger.logger.Printf("[LOGGER] Timestamp format set to Time")
 	}
 }
 
@@ -77,31 +96,43 @@ func shouldLog(level Level) bool {
 	return level >= defaultLogger.level
 }
 
+// formatMessage adds timestamp prefix if using Unix time
+func formatMessage(prefix, format string, v ...interface{}) string {
+	defaultLogger.mu.RLock()
+	useUnix := defaultLogger.useUnixTime
+	defaultLogger.mu.RUnlock()
+
+	if useUnix {
+		return fmt.Sprintf("[%d] %s%s", time.Now().Unix(), prefix, fmt.Sprintf(format, v...))
+	}
+	return fmt.Sprintf("%s%s", prefix, fmt.Sprintf(format, v...))
+}
+
 // Debug logs at DEBUG level
 func Debug(format string, v ...interface{}) {
 	if shouldLog(DEBUG) {
-		defaultLogger.logger.Printf("[DEBUG] "+format, v...)
+		defaultLogger.logger.Print(formatMessage("[DEBUG] ", format, v...))
 	}
 }
 
 // Info logs at INFO level
 func Info(format string, v ...interface{}) {
 	if shouldLog(INFO) {
-		defaultLogger.logger.Printf("[INFO] "+format, v...)
+		defaultLogger.logger.Print(formatMessage("[INFO] ", format, v...))
 	}
 }
 
 // Warn logs at WARN level
 func Warn(format string, v ...interface{}) {
 	if shouldLog(WARN) {
-		defaultLogger.logger.Printf("[WARN] "+format, v...)
+		defaultLogger.logger.Print(formatMessage("[WARN] ", format, v...))
 	}
 }
 
 // Error logs at ERROR level
 func Error(format string, v ...interface{}) {
 	if shouldLog(ERROR) {
-		defaultLogger.logger.Printf("[ERROR] "+format, v...)
+		defaultLogger.logger.Print(formatMessage("[ERROR] ", format, v...))
 	}
 }
 
@@ -127,7 +158,7 @@ func Errorf(format string, v ...interface{}) {
 
 // Fatal logs at ERROR level and exits
 func Fatal(format string, v ...interface{}) {
-	defaultLogger.logger.Printf("[FATAL] "+format, v...)
+	defaultLogger.logger.Print(formatMessage("[FATAL] ", format, v...))
 	os.Exit(1)
 }
 
