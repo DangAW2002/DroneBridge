@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tutorial Setting- DroneBridge</title>
+    <title>Cài đặt cơ bản - DroneBridge</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -258,53 +258,6 @@
             border: 1px solid rgba(59, 130, 246, 0.2);
         }
 
-        .status-badge {
-            display: inline-block;
-            padding: 0.375rem 0.75rem;
-            border-radius: 0.375rem;
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .status-connected {
-            background: rgba(34, 197, 94, 0.2);
-            color: var(--accent-green);
-        }
-
-        .status-available {
-            background: rgba(59, 130, 246, 0.2);
-            color: var(--accent-blue);
-        }
-
-        .status-no-ip {
-            background: rgba(234, 179, 8, 0.2);
-            color: var(--accent-yellow);
-        }
-
-        .status-no-internet {
-            background: rgba(249, 115, 22, 0.2);
-            color: var(--accent-orange);
-        }
-
-        .status-unavailable {
-            background: rgba(107, 114, 128, 0.2);
-            color: var(--text-secondary);
-        }
-
-        .status-checking {
-            background: rgba(107, 114, 128, 0.2);
-            color: var(--text-secondary);
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-
         .modal {
             display: none;
             position: fixed;
@@ -427,25 +380,25 @@
     <div class="container">
         <div class="header">
             <a href="dashboard.html" class="back-btn">
-                ← Return
+                ← Quay lại
             </a>
-            <h1>🛠️ Tutorial Setting</h1>
+            <h1>🛠️ Cài đặt cơ bản</h1>
         </div>
 
         <div class="settings-grid">
             <!-- Motor Testing -->
             <div class="setting-card card-motor">
                 <div class="card-icon">⚙️</div>
-                <div class="card-title">Motor Testing</div>
+                <div class="card-title">Kiểm tra Motor</div>
                 <div class="card-desc">
-                    Test the operation of each motor, confirm rotation direction and control response.
+                    Kiểm tra hoạt động của từng motor, xác nhận hướng quay và đáp ứng điều khiển.
                 </div>
                 <div class="card-actions">
                     <button class="btn btn-warning" onclick="testMotors()">Test Motor</button>
                     <button class="btn btn-secondary" onclick="calibrateESC()">Calib ESC</button>
                 </div>
                 <div id="motor-status" style="display: none;" class="status-indicator status-info">
-                    Not tested
+                    Chưa test
                 </div>
             </div>
 
@@ -454,14 +407,14 @@
                 <div class="card-icon">🛡️</div>
                 <div class="card-title">Failsafe</div>
                 <div class="card-desc">
-                    Configure safety modes for signal loss or emergencies: RTL, Land, Hold.
+                    Cấu hình các chế độ an toàn khi mất tín hiệu hoặc gặp sự cố: RTL, Land, Hold.
                 </div>
                 <div class="card-actions">
-                    <button class="btn btn-danger" onclick="configFailsafe()">Configure</button>
+                    <button class="btn btn-danger" onclick="configFailsafe()">Cấu hình</button>
                     <button class="btn btn-secondary" onclick="testFailsafe()">Test</button>
                 </div>
                 <div id="failsafe-status" style="display: none;" class="status-indicator status-info">
-                    Not configured
+                    Chưa cấu hình
                 </div>
             </div>
 
@@ -470,7 +423,7 @@
                 <div class="card-icon">🔓</div>
                 <div class="card-title">Arm / Disarm</div>
                 <div class="card-desc">
-                    Control the ARM/DISARM state of the drone, check arm conditions, and manage safety.
+                    Điều khiển trạng thái ARM/DISARM của drone, kiểm tra điều kiện arm và quản lý an toàn.
                 </div>
                 <div class="card-actions">
                     <button class="btn btn-success" onclick="armDrone()">ARM</button>
@@ -484,28 +437,28 @@
             <!-- GPS Testing -->
             <div class="setting-card card-gps">
                 <div class="card-icon">🛰️</div>
-                <div class="card-title">GPS Testing</div>
+                <div class="card-title">Kiểm tra GPS</div>
                 <div class="card-desc">
-                    Test GPS signal, satellite count, position accuracy, and compass.
+                    Kiểm tra tín hiệu GPS, số lượng vệ tinh, độ chính xác vị trí và compass.
                 </div>
                 <div class="card-actions">
-                    <button class="btn btn-primary" onclick="testGPS()">Test GPS</button>
+                    <button class="btn btn-primary" onclick="testGPS()">Kiểm tra GPS</button>
                     <button class="btn btn-secondary" onclick="compassCalib()">Calib Compass</button>
                 </div>
                 <div id="gps-status" style="display: none;" class="status-indicator status-info">
-                    Checking...
+                    Đang kiểm tra...
                 </div>
             </div>
 
             <!-- Camera Settings CM5 -->
             <div class="setting-card card-camera-settings">
                 <div class="card-icon">🎥</div>
-                <div class="card-title">Camera Settings CM5</div>
+                <div class="card-title">Cài đặt Camera CM5</div>
                 <div class="card-desc">
-                    Configure Picamera2 for streaming applications. Landing detection always uses 640x480 for optimal performance.
+                    Cấu hình camera Picamera2 cho các ứng dụng streaming. Landing detection luôn dùng 640x480 để tối ưu hiệu suất.
                 </div>
                 <div class="card-actions">
-                    <button class="btn btn-primary" onclick="openCameraSettings()">Configure</button>
+                    <button class="btn btn-primary" onclick="openCameraSettings()">Cài đặt</button>
                     <button class="btn btn-secondary" onclick="testCamera()">Test Camera</button>
                 </div>
                 <div id="camera-settings-status" class="status-indicator status-info">
@@ -518,29 +471,13 @@
                 <div class="card-icon">🛬</div>
                 <div class="card-title">Auto Landing</div>
                 <div class="card-desc">
-                    Configure the auto landing system, select detection templates, and adjust landing parameters.
+                    Cấu hình hệ thống tự động hạ cánh, chọn template nhận diện và điều chỉnh các thông số landing.
                 </div>
                 <div class="card-actions">
-                    <button class="btn btn-primary" onclick="openAutoLandingSettings()">Configure Landing</button>
+                    <button class="btn btn-primary" onclick="openAutoLandingSettings()">Cài đặt Landing</button>
                 </div>
                 <div id="landing-status" class="status-indicator status-info">
                     Template: Default
-                </div>
-            </div>
-
-            <!-- Network Connection -->
-            <div class="setting-card" style="--accent-color: var(--accent-cyan);">
-                <div class="card-icon">🌐</div>
-                <div class="card-title">Network Connection</div>
-                <div class="card-desc">
-                    Quản lý kết nối mạng: 4G, WiFi. Chọn ưu tiên kết nối và xem trạng thái real-time.
-                </div>
-                <div class="card-actions">
-                    <button class="btn btn-primary" onclick="openNetworkSettings()">Configure Network</button>
-                    <button class="btn btn-secondary" onclick="reconnectNetwork()">Reconnect</button>
-                </div>
-                <div id="network-status" class="status-indicator status-info">
-                    Checking...
                 </div>
             </div>
         </div>
@@ -550,13 +487,13 @@
     <div id="motorTestModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 class="modal-title">Motor Testing</h2>
+                <h2 class="modal-title">Kiểm tra Motor</h2>
                 <button class="close-btn" onclick="closeModal('motorTestModal')">×</button>
             </div>
             <div class="form-group">
-                <label class="form-label">Select Motor</label>
+                <label class="form-label">Chọn Motor</label>
                 <select class="form-select" id="motorSelect">
-                    <option value="all">All Motors</option>
+                    <option value="all">Tất cả Motor</option>
                     <option value="1">Motor 1 (Front Right)</option>
                     <option value="2">Motor 2 (Rear Left)</option>
                     <option value="3">Motor 3 (Front Left)</option>
@@ -564,18 +501,18 @@
                 </select>
             </div>
             <div class="form-group">
-                <label class="form-label">Test Speed (%)</label>
+                <label class="form-label">Tốc độ test (%)</label>
                 <input type="range" class="form-input" min="0" max="50" value="20" id="motorSpeed" oninput="document.getElementById('speedValue').textContent = this.value + '%'">
                 <span id="speedValue">20%</span>
             </div>
             <div class="card-actions">
-                <button class="btn btn-warning" onclick="startMotorTest()">Start Test</button>
-                <button class="btn btn-danger" onclick="stopMotorTest()">Stop</button>
-                <button class="btn btn-secondary" onclick="closeModal('motorTestModal')">Close</button>
+                <button class="btn btn-warning" onclick="startMotorTest()">Bắt đầu Test</button>
+                <button class="btn btn-danger" onclick="stopMotorTest()">Dừng</button>
+                <button class="btn btn-secondary" onclick="closeModal('motorTestModal')">Đóng</button>
             </div>
             <div class="divider"></div>
             <div class="output-box" id="motorOutput">
-Select a motor and press "Start Test"
+Chọn motor và nhấn "Bắt đầu Test"
             </div>
         </div>
     </div>
@@ -584,7 +521,7 @@ Select a motor and press "Start Test"
     <div id="failsafeModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 class="modal-title">Failsafe Configuration</h2>
+                <h2 class="modal-title">Cấu hình Failsafe</h2>
                 <button class="close-btn" onclick="closeModal('failsafeModal')">×</button>
             </div>
             <div class="form-group">
@@ -610,12 +547,12 @@ Select a motor and press "Start Test"
                 <input type="number" class="form-input" value="20" min="10" max="50" id="batteryFailsafe">
             </div>
             <div class="card-actions">
-                <button class="btn btn-primary" onclick="saveFailsafe()">Save Configuration</button>
-                <button class="btn btn-secondary" onclick="closeModal('failsafeModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="saveFailsafe()">Lưu cấu hình</button>
+                <button class="btn btn-secondary" onclick="closeModal('failsafeModal')">Hủy</button>
             </div>
             <div class="divider"></div>
             <div class="output-box" id="failsafeOutput">
-Current failsafe configuration will be displayed here...
+Cấu hình failsafe hiện tại sẽ được hiển thị ở đây...
             </div>
         </div>
     </div>
@@ -624,16 +561,16 @@ Current failsafe configuration will be displayed here...
     <div id="gpsModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 class="modal-title">GPS Testing</h2>
+                <h2 class="modal-title">Kiểm tra GPS</h2>
                 <button class="close-btn" onclick="closeModal('gpsModal')">×</button>
             </div>
             <div class="output-box" id="gpsOutput">
-Loading GPS information...
+Đang tải thông tin GPS...
             </div>
             <div class="divider"></div>
             <div class="card-actions">
-                <button class="btn btn-primary" onclick="refreshGPS()">Refresh</button>
-                <button class="btn btn-secondary" onclick="closeModal('gpsModal')">Close</button>
+                <button class="btn btn-primary" onclick="refreshGPS()">Làm mới</button>
+                <button class="btn btn-secondary" onclick="closeModal('gpsModal')">Đóng</button>
             </div>
         </div>
     </div>
@@ -642,12 +579,12 @@ Loading GPS information...
     <div id="compassModal" class="modal">
         <div class="modal-content" style="max-width: 800px;">
             <div class="modal-header">
-                <h2 class="modal-title">Compass Calibration</h2>
+                <h2 class="modal-title">Hiệu chỉnh Compass</h2>
                 <button class="close-btn" onclick="closeModal('compassModal')">×</button>
             </div>
             <div style="text-align: center; margin-bottom: 2rem;">
                 <h3 style="color: var(--accent-cyan); margin-bottom: 1rem;">Sensors Setup</h3>
-                <p style="color: var(--text-secondary); margin-bottom: 2rem;">Rotate the drone continuously according to the diagram until completed</p>
+                <p style="color: var(--text-secondary); margin-bottom: 2rem;">Xoay drone liên tục theo sơ đồ cho đến khi hoàn thành</p>
                 
                 <div id="orientationGrid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
                     <!-- Row 1 -->
@@ -698,113 +635,9 @@ Loading GPS information...
             </div>
             
             <div class="card-actions">
-                <button class="btn btn-primary" onclick="startCompassCalib()">Start</button>
-                <button class="btn btn-danger" onclick="cancelCompassCalib()">Cancel</button>
-                <button class="btn btn-secondary" onclick="closeModal('compassModal')">Close</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal for Network Settings -->
-    <div id="networkModal" class="modal">
-        <div class="modal-content" style="max-width: 650px;">
-            <div class="modal-header">
-                <h2 class="modal-title">🌐 Network Settings</h2>
-                <button class="close-btn" onclick="closeModal('networkModal')">×</button>
-            </div>
-            
-            <!-- Connection Priority -->
-            <div class="form-group">
-                <label class="form-label">Connection Priority</label>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                    <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 0.5rem; cursor: pointer;">
-                        <input type="radio" name="priority" value="4g" id="priority4g">
-                        <span>📡 4G First</span>
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 0.5rem; cursor: pointer;">
-                        <input type="radio" name="priority" value="wifi" id="priorityWifi">
-                        <span>📶 WiFi First</span>
-                    </label>
-                </div>
-                <small style="color: var(--text-secondary);">Drone will try to connect following this priority order</small>
-            </div>
-
-            <!-- Interface Status -->
-            <div class="form-group">
-                <label class="form-label">Interface Status</label>
-                
-                <!-- 4G Status -->
-                <div style="background: var(--bg-primary); border: 1px solid var(--border); border-radius: 0.5rem; padding: 1rem; margin-bottom: 0.75rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div style="display: flex; align-items: center; gap: 0.75rem;">
-                            <div style="font-size: 1.5rem;">📡</div>
-                            <div>
-                                <div style="font-weight: 600; color: var(--text-primary);">4G / LTE</div>
-                                <div style="font-size: 0.875rem; color: var(--text-secondary);" id="status-4g-info">wwan0</div>
-                            </div>
-                        </div>
-                        <div>
-                            <span class="status-badge status-checking" id="status-4g">Checking...</span>
-                        </div>
-                    </div>
-                    <div id="status-4g-details" style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border); font-size: 0.875rem; color: var(--text-secondary); display: none;">
-                        IP: <span id="status-4g-ip">-</span><br>
-                        Signal: <span id="status-4g-signal">-</span>
-                    </div>
-                </div>
-
-                <!-- WiFi Status -->
-                <div style="background: var(--bg-primary); border: 1px solid var(--border); border-radius: 0.5rem; padding: 1rem; margin-bottom: 0.75rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div style="display: flex; align-items: center; gap: 0.75rem;">
-                            <div style="font-size: 1.5rem;">📶</div>
-                            <div>
-                                <div style="font-weight: 600; color: var(--text-primary);">WiFi</div>
-                                <div style="font-size: 0.875rem; color: var(--text-secondary);" id="status-wifi-info">wlan0</div>
-                            </div>
-                        </div>
-                        <div>
-                            <span class="status-badge status-checking" id="status-wifi">Checking...</span>
-                        </div>
-                    </div>
-                    <div id="status-wifi-details" style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border); font-size: 0.875rem; color: var(--text-secondary); display: none;">
-                        IP: <span id="status-wifi-ip">-</span><br>
-                        SSID: <span id="status-wifi-ssid">-</span>
-                    </div>
-                </div>
-
-                <!-- Ethernet Status -->
-                <div style="background: var(--bg-primary); border: 1px solid var(--border); border-radius: 0.5rem; padding: 1rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div style="display: flex; align-items: center; gap: 0.75rem;">
-                            <div style="font-size: 1.5rem;">🔌</div>
-                            <div>
-                                <div style="font-weight: 600; color: var(--text-primary);">Ethernet</div>
-                                <div style="font-size: 0.875rem; color: var(--text-secondary);" id="status-eth-info">eth0</div>
-                            </div>
-                        </div>
-                        <div>
-                            <span class="status-badge status-checking" id="status-eth">Checking...</span>
-                        </div>
-                    </div>
-                    <div id="status-eth-details" style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border); font-size: 0.875rem; color: var(--text-secondary); display: none;">
-                        IP: <span id="status-eth-ip">-</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Active Connection -->
-            <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 0.5rem; padding: 1rem; margin: 1rem 0;">
-                <div style="color: var(--accent-blue); font-weight: 600; margin-bottom: 0.5rem;">🔗 Active Connection</div>
-                <div id="activeConnection" style="color: var(--text-secondary); font-size: 0.875rem;">
-                    Checking...
-                </div>
-            </div>
-
-            <!-- Action Buttons -->
-            <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
-                <button class="btn btn-secondary" style="flex: 1;" onclick="refreshNetworkStatus()">🔄 Refresh Status</button>
-                <button class="btn btn-primary" style="flex: 1;" onclick="saveNetworkPriority()">💾 Save Priority</button>
+                <button class="btn btn-primary" onclick="startCompassCalib()">Bắt đầu</button>
+                <button class="btn btn-danger" onclick="cancelCompassCalib()">Hủy</button>
+                <button class="btn btn-secondary" onclick="closeModal('compassModal')">Đóng</button>
             </div>
         </div>
     </div>
@@ -821,13 +654,13 @@ Loading GPS information...
             <div class="form-group">
                 <label class="form-label">Landing Mode</label>
                 <select class="form-select" id="landingMode" onchange="updateLandingPreview()">
-                    <option value="easy">Easy - Stable, Safe (recommended for beginners)</option>
-                    <option value="normal" selected>Normal - Balance between speed and accuracy</option>
-                    <option value="fast">Fast - Quick landing, less checks</option>
-                    <option value="precision">Precision - High accuracy, slower</option>
-                    <option value="windy">Windy - Optimized for windy conditions</option>
+                    <option value="easy">Easy - Ổn định, an toàn (khuyên dùng cho người mới)</option>
+                    <option value="normal" selected>Normal - Cân bằng giữa tốc độ và độ chính xác</option>
+                    <option value="fast">Fast - Hạ cánh nhanh, ít kiểm tra</option>
+                    <option value="precision">Precision - Độ chính xác cao, chậm hơn</option>
+                    <option value="windy">Windy - Tối ưu cho điều kiện gió</option>
                 </select>
-                <small style="color: var(--text-secondary);">Landing mode affects speed, accuracy, and stability</small>
+                <small style="color: var(--text-secondary);">Chế độ landing ảnh hưởng đến tốc độ, độ chính xác và độ ổn định</small>
             </div>
 
             <!-- Environment -->
@@ -843,22 +676,36 @@ Loading GPS information...
                         <span>🌤️ Outdoor</span>
                     </label>
                 </div>
-                <small style="color: var(--text-secondary);">Indoor: low wind, stable lighting | Outdoor: windy, changing weather</small>
+                <small style="color: var(--text-secondary);">Indoor: ít gió, ánh sáng ổn định | Outdoor: có gió, thời tiết thay đổi</small>
             </div>
 
             <!-- Marker Type -->
             <div class="form-group">
-                <label class="form-label">Template Landing Pad</label>
-                <select class="form-select" id="landingTemplate" onchange="previewTemplate()">
-                    <option value="">Loading templates...</option>
-                </select>
-                <small style="color: var(--text-secondary);">Select a template that matches your landing pad</small>
+                <label class="form-label">Marker Type</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem;">
+                    <label style="display: flex; flex-direction: column; align-items: center; padding: 1rem; background: var(--bg-primary); border: 2px solid var(--accent-blue); border-radius: 0.5rem; cursor: pointer;">
+                        <input type="radio" name="markerType" value="H" checked onchange="previewMarker()">
+                        <div style="font-size: 2rem; margin: 0.5rem 0;">H</div>
+                        <span style="font-size: 0.875rem;">H Marker</span>
+                    </label>
+                    <label style="display: flex; flex-direction: column; align-items: center; padding: 1rem; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 0.5rem; cursor: pointer;">
+                        <input type="radio" name="markerType" value="aruco" onchange="previewMarker()">
+                        <div style="font-size: 2rem; margin: 0.5rem 0;">⊞</div>
+                        <span style="font-size: 0.875rem;">ArUco</span>
+                    </label>
+                    <label style="display: flex; flex-direction: column; align-items: center; padding: 1rem; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 0.5rem; cursor: pointer;">
+                        <input type="radio" name="markerType" value="apriltag" onchange="previewMarker()">
+                        <div style="font-size: 2rem; margin: 0.5rem 0;">⊡</div>
+                        <span style="font-size: 0.875rem;">AprilTag</span>
+                    </label>
+                </div>
+                <small style="color: var(--text-secondary);">Chọn loại marker phù hợp với landing pad của bạn</small>
             </div>
 
             <!-- Marker Preview -->
             <div id="markerPreview" style="background: var(--bg-primary); border: 1px solid var(--border); border-radius: 0.5rem; padding: 1.5rem; margin: 1rem 0; text-align: center;">
-                <img id="templateImg" src="" alt="Template Preview" style="max-width: 200px; max-height: 200px; display: none; margin: 0 auto;"/>
-                <div id="templateDesc" style="color: var(--text-secondary); margin-top: 0.5rem;">Select a template to see preview</div>
+                <div style="font-size: 4rem; margin-bottom: 0.5rem;">H</div>
+                <div id="markerDesc" style="color: var(--text-secondary);">H Template - Đơn giản, dễ nhận diện</div>
             </div>
 
             <!-- Safety Level -->
@@ -881,9 +728,9 @@ Loading GPS information...
                     <span id="safetyLabel" style="color: var(--accent-blue); font-weight: 600;">Balanced</span>
                 </div>
                 <small style="color: var(--text-secondary);">
-                    Conservative: More checks, slower, safer<br>
-                    Balanced: Balance between speed and safety<br>
-                    Aggressive: Faster, fewer checks, higher risk
+                    Conservative: Nhiều kiểm tra, chậm hơn, an toàn hơn<br>
+                    Balanced: Cân bằng giữa tốc độ và độ an toàn<br>
+                    Aggressive: Nhanh hơn, ít kiểm tra, rủi ro cao hơn
                 </small>
             </div>
 
@@ -897,21 +744,21 @@ Loading GPS information...
 
             <!-- Warning Box -->
             <div style="background: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.3); border-radius: 0.5rem; padding: 1rem; margin: 1rem 0;">
-                <div style="color: var(--accent-yellow); font-weight: 600; margin-bottom: 0.5rem;">⚠️ Safety Notice</div>
+                <div style="color: var(--accent-yellow); font-weight: 600; margin-bottom: 0.5rem;">⚠️ Lưu ý an toàn</div>
                 <div style="color: var(--text-secondary); font-size: 0.875rem;">
-                    • Always test at a safe height first (> 5m)<br>
-                    • Ensure the landing pad is clear and unobstructed<br>
-                    • Manual override mode available for intervention<br>
-                    • Check GPS and compass before use<br>
-                    • Do not use Aggressive mode without experience
+                    • Luôn test ở độ cao an toàn trước (> 5m)<br>
+                    • Đảm bảo landing pad rõ ràng, không bị che khuất<br>
+                    • Có sẵn chế độ manual override để can thiệp<br>
+                    • Kiểm tra GPS và compass trước khi sử dụng<br>
+                    • Không dùng chế độ Aggressive khi chưa có kinh nghiệm
                 </div>
             </div>
 
             <!-- Action Buttons -->
             <div class="card-actions">
-                <button class="btn btn-primary" onclick="saveLandingSettings()">💾 Save Configuration</button>
+                <button class="btn btn-primary" onclick="saveLandingSettings()">💾 Lưu cấu hình</button>
                 <button class="btn btn-warning" onclick="testLanding()">🧪 Test Landing</button>
-                <button class="btn btn-secondary" onclick="closeModal('autoLandingModal')">Close</button>
+                <button class="btn btn-secondary" onclick="closeModal('autoLandingModal')">Đóng</button>
             </div>
             
             <div class="divider"></div>
@@ -1244,40 +1091,7 @@ Loading GPS information...
         // Auto Landing Settings
         function openAutoLandingSettings() {
             openModal('autoLandingModal');
-            loadTemplateList();
             loadLandingSettings();
-        }
-
-        // Load available templates from API
-        function loadTemplateList() {
-            fetch('/api/landing/templates')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success && data.templates) {
-                        const select = document.getElementById('landingTemplate');
-                        select.innerHTML = '';
-                        
-                        data.templates.forEach(template => {
-                            const option = document.createElement('option');
-                            option.value = template;
-                            option.textContent = `Template ${template}`;
-                            select.appendChild(option);
-                        });
-                        
-                        // Set default to H if available
-                        if (data.templates.includes('H')) {
-                            select.value = 'H';
-                        }
-                        
-                        previewTemplate();
-                    } else {
-                        document.getElementById('landingTemplate').innerHTML = '<option>Không tìm thấy templates</option>';
-                    }
-                })
-                .catch(error => {
-                    console.error('Error loading templates:', error);
-                    document.getElementById('landingTemplate').innerHTML = '<option>Lỗi khi load templates</option>';
-                });
         }
 
         function loadLandingSettings() {
@@ -1293,10 +1107,9 @@ Loading GPS information...
                         if (envRadio) envRadio.checked = true;
                     }
                     
-                    if (config.marker_type || config.template) {
-                        const template = config.template || config.marker_type;
-                        document.getElementById('landingTemplate').value = template;
-                        previewTemplate();
+                    if (config.marker_type) {
+                        const markerRadio = document.querySelector(`input[name="markerType"][value="${config.marker_type}"]`);
+                        if (markerRadio) markerRadio.checked = true;
                     }
                     
                     if (config.safety_level) {
@@ -1304,6 +1117,7 @@ Loading GPS information...
                         updateSafetyLabel(config.safety_level);
                     }
                     
+                    previewMarker();
                     updateLandingPreview();
                     document.getElementById('landingOutput').textContent = '✅ Đã load config đã lưu';
                     return;
@@ -1325,10 +1139,9 @@ Loading GPS information...
                             if (envRadio) envRadio.checked = true;
                         }
                         
-                        if (config.marker_type || config.template) {
-                            const template = config.template || config.marker_type;
-                            document.getElementById('landingTemplate').value = template;
-                            previewTemplate();
+                        if (config.marker_type) {
+                            const markerRadio = document.querySelector(`input[name="markerType"][value="${config.marker_type}"]`);
+                            if (markerRadio) markerRadio.checked = true;
                         }
                         
                         if (config.safety_level) {
@@ -1336,15 +1149,16 @@ Loading GPS information...
                             updateSafetyLabel(config.safety_level);
                         }
                         
+                        previewMarker();
                         updateLandingPreview();
                         document.getElementById('landingOutput').textContent = '✅ Đã load config từ server';
                     }
                 })
                 .catch(error => {
                     // Use defaults
-                    previewTemplate();
+                    previewMarker();
                     updateLandingPreview();
-                    document.getElementById('landingOutput').textContent = 'Sử dụng config mặc định\nMode: Normal | Environment: Outdoor | Template: H | Safety: Balanced';
+                    document.getElementById('landingOutput').textContent = 'Sử dụng config mặc định\nMode: Normal | Environment: Outdoor | Marker: H | Safety: Balanced';
                 });
         }
 
@@ -1353,40 +1167,37 @@ Loading GPS information...
             const templateImg = document.getElementById('templateImg');
             const templateDesc = document.getElementById('templateDesc');
             
-            if (!template) {
-                templateImg.style.display = 'none';
-                templateDesc.textContent = 'Chọn template để xem preview';
-                return;
-            }
+            const descriptions = {
+                'H': 'Template chữ H - Mặc định cho landing pad tiêu chuẩn',
+                'A': 'Template chữ A - Nhận diện landing pad chữ A',
+                'K': 'Template chữ K - Nhận diện landing pad chữ K',
+                'Y': 'Template chữ Y - Nhận diện landing pad chữ Y'
+            };
             
-            templateDesc.textContent = `Template ${template} - Landing pad với ký tự ${template}`;
+            templateDesc.textContent = descriptions[template] || 'Template ' + template;
             
-            // Load template image from static files
-            templateImg.src = `/templates/${template}.png`;
+            // Try to load template image preview from the templates folder
+            const templatePath = `/api/landing/templates/${template}.png`;
+            templateImg.src = templatePath;
             templateImg.style.display = 'block';
             templateImg.onerror = function() {
                 this.style.display = 'none';
-                templateDesc.textContent = `Template ${template} (Preview không có sẵn)`;
+                templateDesc.textContent += ' (Preview không có sẵn)';
             };
         }
 
         function saveLandingSettings() {
             const mode = document.getElementById('landingMode').value;
             const environment = document.querySelector('input[name="environment"]:checked')?.value || 'outdoor';
-            const template = document.getElementById('landingTemplate').value;
+            const markerType = document.querySelector('input[name="markerType"]:checked')?.value || 'H';
             const safetyLevel = parseInt(document.getElementById('safetyLevel').value);
-            
-            if (!template) {
-                document.getElementById('landingOutput').textContent = '✗ Vui lòng chọn template!';
-                return;
-            }
             
             const config = {
                 mode: mode,
                 environment: environment,
-                marker_type: template,
+                marker_type: markerType,
                 safety_level: safetyLevel,
-                template: template
+                template: markerType === 'H' ? 'H' : (markerType === 'aruco' ? 'aruco' : 'apriltag')
             };
             
             const output = document.getElementById('landingOutput');
@@ -1406,13 +1217,13 @@ Loading GPS information...
                         output.textContent += 'Landing Config:\n';
                         output.textContent += `  Mode: ${mode}\n`;
                         output.textContent += `  Environment: ${environment}\n`;
-                        output.textContent += `  Template: ${template}\n`;
+                        output.textContent += `  Marker Type: ${markerType}\n`;
                         output.textContent += `  Safety Level: ${getSafetyLevelText(safetyLevel)}\n\n`;
                         output.textContent += '✅ Config được lưu vào: Find_landing/landing_config.json\n';
                         
                         const status = document.getElementById('landing-status');
                         status.className = 'status-indicator status-success';
-                        status.textContent = `✓ ${mode.toUpperCase()} | ${template}`;
+                        status.textContent = `✓ ${mode.toUpperCase()} | ${markerType}`;
                         
                         setTimeout(() => {
                             closeModal('autoLandingModal');
@@ -1458,14 +1269,43 @@ Loading GPS information...
         function updateLandingPreview() {
             const mode = document.getElementById('landingMode').value;
             const environment = document.querySelector('input[name="environment"]:checked')?.value || 'outdoor';
-            const template = document.getElementById('landingTemplate').value || 'H';
+            const markerType = document.querySelector('input[name="markerType"]:checked')?.value || 'H';
             const safetyLevel = parseInt(document.getElementById('safetyLevel').value);
             
             const summary = document.getElementById('configSummary');
-            summary.textContent = `Mode: ${mode.toUpperCase()} | Environment: ${environment.toUpperCase()} | Template: ${template} | Safety: ${getSafetyLevelText(safetyLevel)}`;
+            summary.textContent = `Mode: ${mode.toUpperCase()} | Environment: ${environment.toUpperCase()} | Marker: ${markerType} | Safety: ${getSafetyLevelText(safetyLevel)}`;
         }
 
-
+        function previewMarker() {
+            const markerType = document.querySelector('input[name="markerType"]:checked')?.value || 'H';
+            const preview = document.getElementById('markerPreview');
+            const desc = document.getElementById('markerDesc');
+            
+            // Update all radio button styles
+            document.querySelectorAll('input[name="markerType"]').forEach(radio => {
+                const label = radio.parentElement;
+                if (radio.checked) {
+                    label.style.borderColor = 'var(--accent-blue)';
+                    label.style.borderWidth = '2px';
+                } else {
+                    label.style.borderColor = 'var(--border)';
+                    label.style.borderWidth = '1px';
+                }
+            });
+            
+            if (markerType === 'H') {
+                preview.querySelector('div:first-child').textContent = 'H';
+                desc.textContent = 'H Template - Đơn giản, dễ nhận diện, tốt cho mọi điều kiện';
+            } else if (markerType === 'aruco') {
+                preview.querySelector('div:first-child').textContent = '⊞';
+                desc.textContent = 'ArUco Marker - Độ chính xác cao, hỗ trợ nhiều ID';
+            } else if (markerType === 'apriltag') {
+                preview.querySelector('div:first-child').textContent = '⊡';
+                desc.textContent = 'AprilTag - Chuẩn công nghiệp, robust với góc nghiêng';
+            }
+            
+            updateLandingPreview();
+        }
 
         function testLanding() {
             const output = document.getElementById('landingOutput');
@@ -1609,212 +1449,6 @@ Loading GPS information...
                     output.textContent = '✗ Lỗi kết nối: ' + error.message;
                 });
         }
-
-        // Network Settings Functions
-        let networkStatusInterval = null;
-
-        function openNetworkSettings() {
-            const modal = document.getElementById('networkModal');
-            modal.classList.add('active');
-            loadNetworkSettings();
-            startNetworkStatusUpdates();
-        }
-
-        function loadNetworkSettings() {
-            // Load current priority
-            fetch('/api/network/priority')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.priority === '4g') {
-                        document.getElementById('priority4g').checked = true;
-                    } else {
-                        document.getElementById('priorityWifi').checked = true;
-                    }
-                })
-                .catch(error => console.error('Error loading priority:', error));
-
-            // Load initial status
-            refreshNetworkStatus();
-        }
-
-        function refreshNetworkStatus() {
-            fetch('/api/network/status')
-                .then(response => response.json())
-                .then(data => {
-                    updateNetworkDisplay(data);
-                })
-                .catch(error => {
-                    console.error('Error loading network status:', error);
-                    document.getElementById('activeConnection').textContent = 'Error loading status';
-                });
-        }
-
-        function updateNetworkDisplay(data) {
-            // Update 4G status
-            updateInterfaceStatus('4g', data['4g']);
-            
-            // Update WiFi status
-            updateInterfaceStatus('wifi', data.wifi);
-            
-            // Update Ethernet status
-            updateInterfaceStatus('eth', data.ethernet);
-            
-            // Update active connection
-            const activeConn = document.getElementById('activeConnection');
-            if (data.active_interface) {
-                const iface = data.active_interface;
-                const ifaceData = data[iface] || {};
-                activeConn.innerHTML = `
-                    <strong>Connected via: ${iface.toUpperCase()}</strong><br>
-                    IP: ${ifaceData.ip || 'N/A'}<br>
-                    Gateway: ${ifaceData.gateway || 'N/A'}
-                `;
-            } else {
-                activeConn.textContent = 'No active connection';
-            }
-
-            // Update main status indicator
-            updateMainNetworkStatus(data);
-        }
-
-        function updateInterfaceStatus(type, data) {
-            const statusBadge = document.getElementById(`status-${type}`);
-            const statusDetails = document.getElementById(`status-${type}-details`);
-            
-            if (!data) {
-                statusBadge.className = 'status-badge status-unavailable';
-                statusBadge.textContent = 'Unavailable';
-                if (statusDetails) statusDetails.style.display = 'none';
-                return;
-            }
-
-            let statusClass = 'status-unavailable';
-            let statusText = 'Unavailable';
-
-            if (data.status === 'connected') {
-                statusClass = 'status-connected';
-                statusText = 'Connected';
-            } else if (data.status === 'available') {
-                statusClass = 'status-available';
-                statusText = 'Available';
-            } else if (data.status === 'no_ip') {
-                statusClass = 'status-no-ip';
-                statusText = 'No IP';
-            } else if (data.status === 'no_internet') {
-                statusClass = 'status-no-internet';
-                statusText = 'No Internet';
-            }
-
-            statusBadge.className = `status-badge ${statusClass}`;
-            statusBadge.textContent = statusText;
-
-            // Update details
-            if (statusDetails && data.status !== 'unavailable') {
-                statusDetails.style.display = 'block';
-                
-                if (type === '4g') {
-                    document.getElementById('status-4g-ip').textContent = data.ip || 'N/A';
-                    document.getElementById('status-4g-signal').textContent = data.signal || 'N/A';
-                } else if (type === 'wifi') {
-                    document.getElementById('status-wifi-ip').textContent = data.ip || 'N/A';
-                    document.getElementById('status-wifi-ssid').textContent = data.ssid || 'N/A';
-                } else if (type === 'eth') {
-                    document.getElementById('status-eth-ip').textContent = data.ip || 'N/A';
-                }
-            } else if (statusDetails) {
-                statusDetails.style.display = 'none';
-            }
-        }
-
-        function updateMainNetworkStatus(data) {
-            const mainStatus = document.getElementById('network-status');
-            if (data.active_interface) {
-                const iface = data.active_interface.toUpperCase();
-                mainStatus.className = 'status-indicator status-success';
-                mainStatus.textContent = `✓ Connected via ${iface}`;
-            } else if (data['4g']?.status === 'available' || data.wifi?.status === 'available') {
-                mainStatus.className = 'status-indicator status-info';
-                mainStatus.textContent = 'Available (not connected)';
-            } else {
-                mainStatus.className = 'status-indicator status-error';
-                mainStatus.textContent = '✗ No connection';
-            }
-        }
-
-        function startNetworkStatusUpdates() {
-            // Clear any existing interval
-            if (networkStatusInterval) {
-                clearInterval(networkStatusInterval);
-            }
-            
-            // Update every 5 seconds
-            networkStatusInterval = setInterval(refreshNetworkStatus, 5000);
-        }
-
-        function saveNetworkPriority() {
-            const priority = document.querySelector('input[name="priority"]:checked').value;
-            
-            fetch('/api/network/priority', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ priority: priority })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('✓ Priority saved successfully! The system will reconnect with the new priority.');
-                    // Trigger reconnection
-                    reconnectNetwork();
-                } else {
-                    alert('✗ Error: ' + (data.error || 'Unknown error'));
-                }
-            })
-            .catch(error => {
-                alert('✗ Connection error: ' + error.message);
-            });
-        }
-
-        function reconnectNetwork() {
-            if (!confirm('Reconnect network? This may cause brief disconnection.')) {
-                return;
-            }
-
-            fetch('/api/network/reconnect', {
-                method: 'POST'
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('✓ Reconnecting...');
-                    // Refresh status after a delay
-                    setTimeout(refreshNetworkStatus, 3000);
-                } else {
-                    alert('✗ Error: ' + (data.error || 'Unknown error'));
-                }
-            })
-            .catch(error => {
-                alert('✗ Connection error: ' + error.message);
-            });
-        }
-
-        // Load initial network status on page load
-        window.addEventListener('DOMContentLoaded', function() {
-            refreshNetworkStatus();
-            // Update every 10 seconds on main page
-            setInterval(refreshNetworkStatus, 10000);
-        });
-
-        // Stop interval when modal closes
-        document.getElementById('networkModal')?.addEventListener('click', function(e) {
-            if (e.target === this || e.target.classList.contains('close-btn')) {
-                if (networkStatusInterval) {
-                    clearInterval(networkStatusInterval);
-                    networkStatusInterval = null;
-                }
-            }
-        });
 
         // Close modal when clicking outside
         window.onclick = function(event) {

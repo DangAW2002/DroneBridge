@@ -1,0 +1,55 @@
+# MAVLink DroneBridge Configuration
+
+# Logging settings
+log:
+  level: "info"                          # Log level: debug, info, warn, error
+  verbose: false                         # Enable verbose parsing of server messages (detailed field breakdown)
+  timestamp_format: "time"               # Timestamp format: "time" (human-readable) or "unix" (Unix timestamp)
+
+# Authentication settings
+# ⚠️ These credentials are from drones_v2 table in database
+auth:
+  enabled: true                          # Enable/disable authentication
+  host: "45.117.171.237"                 # Authentication server IP
+  port: 5770                             # Authentication port (fixed)
+  
+  # ========== SHARED SECRET & AUTO-REGISTER ==========
+  # New: Leave uuid empty for auto-registration based on hardware ID
+  # If uuid is provided, it will be used instead.
+  uuid: "0fd84717-c520-4d47-ba68-98e5dfcad160"                                       # Empty = Use Hardware ID (Auto-Register)
+  shared_secret: "drone-fleet-shared-secret-auth-key-2025"  # Fleet-wide Shared Secret key
+  # =====================================================
+  
+  keepalive_interval: 30                 # ⏰ TCP keepalive interval in seconds
+  session_heartbeat_frequency: 5         # ⏱️ Session Heartbeat frequency in Hz (MAVLink-wrapped ID 42000)
+
+
+# Network settings (for server connection)
+network:
+  local_listen_port: 14542               # Port to listen for MAVLink from Pixhawk
+  target_host: "45.117.171.237"          # Remote server host
+  target_port: 14550                     # Remote server port
+  protocol: "udp"
+
+# Ethernet settings (for Pixhawk connection)
+# Leave empty for auto-detection, or specify manually
+ethernet:
+  interface: ""                          # Interface name: eth0, end0, etc. (empty = auto-detect)
+  local_ip: "10.41.10.1"                 # Local IP to bind (empty = auto-detect from interface)
+  broadcast_ip: ""                       # Broadcast IP (empty = auto-calculate from local_ip)
+  pixhawk_ip: "10.41.10.2"               # Pixhawk IP address (for filtering duplicates)
+  auto_setup: true                       # Auto configure IP on interface if not set
+  subnet: "24"                           # Subnet mask (24 = /24 = 255.255.255.0)
+  allow_missing_pixhawk: true           # ⚠️ DEBUG ONLY: Allow auth without Pixhawk (for testing without drone)
+  pixhawk_connection_timeout: 30         # Timeout in seconds to wait for Pixhawk connection
+
+# Web server settings
+web:
+  port: 8080                             # Port for status web server
+
+# Camera streaming settings
+camera:
+  enabled: true                          # Enable/disable camera streaming
+  auto_start: true                       # Auto start camera on startup
+  config_file: "Find_landing/camera_config.json"  # Path to camera config
+  stream_path: "/camera/stream"          # HTTP path for camera stream

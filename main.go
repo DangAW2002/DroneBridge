@@ -57,7 +57,6 @@ func main() {
 	}
 	if *overrideWebPort > 0 {
 		logger.Info("🔧 [OVERRIDE] Web Port: %d -> %d", cfg.Web.Port, *overrideWebPort)
-		cfg.Web.Port = *overrideWebPort
 	}
 	if *overrideUUID != "" {
 		logger.Info("🔧 [OVERRIDE] Drone UUID: %s -> %s", cfg.Auth.UUID, *overrideUUID)
@@ -96,10 +95,6 @@ func main() {
 	} else {
 		logger.SetLevelFromString(cfg.Log.Level)
 	}
-
-	// Set timestamp format from config
-	if cfg.Log.TimestampFormat != "" {
-		logger.SetTimestampFormat(cfg.Log.TimestampFormat)
 	}
 
 	// VALIDATE UUID FORMAT
@@ -270,6 +265,31 @@ func main() {
 	// Now set auth client on forwarder and re-wire callbacks
 	fwd.SetAuthClient(authClient)
 
+	// Initialize and start camera streaming if enabled
+	var cameraManager *camera.Manager
+	if cfg.Camera.Enabled {
+		logger.Info("[CAMERA] Camera streaming enabled, initializing...")
+		cameraCfg := camera.Config{
+			Enabled:    cfg.Camera.Enabled,
+			ConfigFile: cfg.Camera.ConfigFile,
+			AutoStart:  cfg.Camera.AutoStart,
+			StreamPath: cfg.Camera.StreamPath,
+		}
+		var err error
+		cameraManager, err = camera.NewManager(cameraCfg)
+		if err != nil {
+			logger.Error("[CAMERA] Failed to create camera manager: %v", err)
+		} else if cfg.Camera.AutoStart {
+			if err := cameraManager.Start(); err != nil {
+				logger.Error("[CAMERA] Failed to start camera streaming: %v", err)
+			} else {
+				logger.Info("[CAMERA] ✅ Camera streaming started successfully")
+			}
+		}
+	} else {
+		logger.Info("[CAMERA] Camera streaming disabled in config")
+	}
+
 	// Wait for interrupt signal
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
@@ -277,23 +297,13 @@ func main() {
 	logger.Info("MAVLink forwarder running. Press Ctrl+C to stop.")
 	<-sigCh
 
-	// Graceful shutdown
-	logger.Info("[SHUTDOWN] Initiating graceful shutdown...")
-
-	// Stop cameras first
-	camera.GracefulShutdown()
+	// Stop camera if running
+	if cameraManager != nil && cameraManager.IsRunning() {
+		logger.Info("[CAMERA] Stopping camera streaming...")
+		cameraManager.Stop()
+	}
 
 	// Stop forwarder
 	fwd.Stop()
-
-	// Cleanup resources
-	camera.Cleanup()
-
-	logger.Info("[SHUTDOWN] ✅ Complete")
-}
-
-// isValidUUID checks if the string is a valid UUID
-func isValidUUID(u string) bool {
-	r := regexp.MustCompile("^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$")
-	return r.MatchString(u)
+	logger.Info("MAVLink forwarder shutdown complete")
 }

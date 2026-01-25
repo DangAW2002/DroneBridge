@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+
 """
 Camera Streamer with Landing Detection Overlay
 Streams processed video with detection overlay to MediaMTX server
