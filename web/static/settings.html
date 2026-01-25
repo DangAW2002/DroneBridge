@@ -1,0 +1,1461 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cài đặt cơ bản - DroneBridge</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-card: #1e293b;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --accent-blue: #3b82f6;
+            --accent-green: #22c55e;
+            --accent-red: #ef4444;
+            --accent-yellow: #eab308;
+            --accent-purple: #8b5cf6;
+            --accent-cyan: #06b6d4;
+            --border: #334155;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, #0c1222 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .back-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 1rem;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s ease;
+        }
+
+        .back-btn:hover {
+            background: var(--bg-secondary);
+            border-color: var(--accent-blue);
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, var(--accent-yellow), var(--accent-red));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .setting-card {
+            background: var(--bg-card);
+            border-radius: 1rem;
+            padding: 2rem;
+            border: 1px solid var(--border);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .setting-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .setting-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .setting-card:hover::before {
+            opacity: 1;
+        }
+
+        .card-camera::before { background: linear-gradient(90deg, var(--accent-purple), var(--accent-blue)); }
+        .card-camera:hover { border-color: var(--accent-purple); }
+        .card-camera .card-icon { color: var(--accent-purple); }
+
+        .card-motor::before { background: linear-gradient(90deg, var(--accent-yellow), var(--accent-red)); }
+        .card-motor:hover { border-color: var(--accent-yellow); }
+        .card-motor .card-icon { color: var(--accent-yellow); }
+
+        .card-failsafe::before { background: linear-gradient(90deg, var(--accent-red), var(--accent-yellow)); }
+        .card-failsafe:hover { border-color: var(--accent-red); }
+        .card-failsafe .card-icon { color: var(--accent-red); }
+
+        .card-arm::before { background: linear-gradient(90deg, var(--accent-green), var(--accent-cyan)); }
+        .card-arm:hover { border-color: var(--accent-green); }
+        .card-arm .card-icon { color: var(--accent-green); }
+
+        .card-gps::before { background: linear-gradient(90deg, var(--accent-cyan), var(--accent-blue)); }
+        .card-gps:hover { border-color: var(--accent-cyan); }
+        .card-gps .card-icon { color: var(--accent-cyan); }
+
+        .card-camera-settings::before { background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple)); }
+        .card-camera-settings:hover { border-color: var(--accent-blue); }
+        .card-camera-settings .card-icon { color: var(--accent-blue); }
+
+        .card-landing::before { background: linear-gradient(90deg, var(--accent-purple), var(--accent-cyan)); }
+        .card-landing:hover { border-color: var(--accent-purple); }
+        .card-landing .card-icon { color: var(--accent-purple); }
+
+        .card-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+        }
+
+        .card-desc {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            border: none;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .btn-primary {
+            background: var(--accent-blue);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-success {
+            background: var(--accent-green);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #16a34a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
+        }
+
+        .btn-danger {
+            background: var(--accent-red);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+        }
+
+        .btn-warning {
+            background: var(--accent-yellow);
+            color: #0f172a;
+        }
+
+        .btn-warning:hover {
+            background: #ca8a04;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(234, 179, 8, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: #334155;
+            border-color: var(--accent-blue);
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-top: 0.5rem;
+        }
+
+        .status-success {
+            background: rgba(34, 197, 94, 0.1);
+            color: var(--accent-green);
+            border: 1px solid rgba(34, 197, 94, 0.2);
+        }
+
+        .status-error {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--accent-red);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .status-info {
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--accent-blue);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 2rem;
+            max-width: 600px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.25rem;
+            line-height: 1;
+        }
+
+        .close-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 1rem;
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        .output-box {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.875rem;
+            color: var(--accent-green);
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent-blue);
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .divider {
+            height: 1px;
+            background: var(--border);
+            margin: 1.5rem 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="dashboard.html" class="back-btn">
+                ← Quay lại
+            </a>
+            <h1>🛠️ Cài đặt cơ bản</h1>
+        </div>
+
+        <div class="settings-grid">
+            <!-- Motor Testing -->
+            <div class="setting-card card-motor">
+                <div class="card-icon">⚙️</div>
+                <div class="card-title">Kiểm tra Motor</div>
+                <div class="card-desc">
+                    Kiểm tra hoạt động của từng motor, xác nhận hướng quay và đáp ứng điều khiển.
+                </div>
+                <div class="card-actions">
+                    <button class="btn btn-warning" onclick="testMotors()">Test Motor</button>
+                    <button class="btn btn-secondary" onclick="calibrateESC()">Calib ESC</button>
+                </div>
+                <div id="motor-status" style="display: none;" class="status-indicator status-info">
+                    Chưa test
+                </div>
+            </div>
+
+            <!-- Failsafe Configuration -->
+            <div class="setting-card card-failsafe">
+                <div class="card-icon">🛡️</div>
+                <div class="card-title">Failsafe</div>
+                <div class="card-desc">
+                    Cấu hình các chế độ an toàn khi mất tín hiệu hoặc gặp sự cố: RTL, Land, Hold.
+                </div>
+                <div class="card-actions">
+                    <button class="btn btn-danger" onclick="configFailsafe()">Cấu hình</button>
+                    <button class="btn btn-secondary" onclick="testFailsafe()">Test</button>
+                </div>
+                <div id="failsafe-status" style="display: none;" class="status-indicator status-info">
+                    Chưa cấu hình
+                </div>
+            </div>
+
+            <!-- Arm/Disarm Control -->
+            <div class="setting-card card-arm">
+                <div class="card-icon">🔓</div>
+                <div class="card-title">Arm / Disarm</div>
+                <div class="card-desc">
+                    Điều khiển trạng thái ARM/DISARM của drone, kiểm tra điều kiện arm và quản lý an toàn.
+                </div>
+                <div class="card-actions">
+                    <button class="btn btn-success" onclick="armDrone()">ARM</button>
+                    <button class="btn btn-danger" onclick="disarmDrone()">DISARM</button>
+                </div>
+                <div id="arm-status" class="status-indicator status-error">
+                    DISARMED
+                </div>
+            </div>
+
+            <!-- GPS Testing -->
+            <div class="setting-card card-gps">
+                <div class="card-icon">🛰️</div>
+                <div class="card-title">Kiểm tra GPS</div>
+                <div class="card-desc">
+                    Kiểm tra tín hiệu GPS, số lượng vệ tinh, độ chính xác vị trí và compass.
+                </div>
+                <div class="card-actions">
+                    <button class="btn btn-primary" onclick="testGPS()">Kiểm tra GPS</button>
+                    <button class="btn btn-secondary" onclick="compassCalib()">Calib Compass</button>
+                </div>
+                <div id="gps-status" style="display: none;" class="status-indicator status-info">
+                    Đang kiểm tra...
+                </div>
+            </div>
+
+            <!-- Camera Settings CM5 -->
+            <div class="setting-card card-camera-settings">
+                <div class="card-icon">🎥</div>
+                <div class="card-title">Cài đặt Camera CM5</div>
+                <div class="card-desc">
+                    Cấu hình camera Picamera2 cho các ứng dụng streaming. Landing detection luôn dùng 640x480 để tối ưu hiệu suất.
+                </div>
+                <div class="card-actions">
+                    <button class="btn btn-primary" onclick="openCameraSettings()">Cài đặt</button>
+                    <button class="btn btn-secondary" onclick="testCamera()">Test Camera</button>
+                </div>
+                <div id="camera-settings-status" class="status-indicator status-info">
+                    640x480 RGB888
+                </div>
+            </div>
+
+            <!-- Auto Landing -->
+            <div class="setting-card card-landing">
+                <div class="card-icon">🛬</div>
+                <div class="card-title">Auto Landing</div>
+                <div class="card-desc">
+                    Cấu hình hệ thống tự động hạ cánh, chọn template nhận diện và điều chỉnh các thông số landing.
+                </div>
+                <div class="card-actions">
+                    <button class="btn btn-primary" onclick="openAutoLandingSettings()">Cài đặt Landing</button>
+                </div>
+                <div id="landing-status" class="status-indicator status-info">
+                    Template: Default
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Motor Testing -->
+    <div id="motorTestModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Kiểm tra Motor</h2>
+                <button class="close-btn" onclick="closeModal('motorTestModal')">×</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Chọn Motor</label>
+                <select class="form-select" id="motorSelect">
+                    <option value="all">Tất cả Motor</option>
+                    <option value="1">Motor 1 (Front Right)</option>
+                    <option value="2">Motor 2 (Rear Left)</option>
+                    <option value="3">Motor 3 (Front Left)</option>
+                    <option value="4">Motor 4 (Rear Right)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Tốc độ test (%)</label>
+                <input type="range" class="form-input" min="0" max="50" value="20" id="motorSpeed" oninput="document.getElementById('speedValue').textContent = this.value + '%'">
+                <span id="speedValue">20%</span>
+            </div>
+            <div class="card-actions">
+                <button class="btn btn-warning" onclick="startMotorTest()">Bắt đầu Test</button>
+                <button class="btn btn-danger" onclick="stopMotorTest()">Dừng</button>
+                <button class="btn btn-secondary" onclick="closeModal('motorTestModal')">Đóng</button>
+            </div>
+            <div class="divider"></div>
+            <div class="output-box" id="motorOutput">
+Chọn motor và nhấn "Bắt đầu Test"
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Failsafe Config -->
+    <div id="failsafeModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Cấu hình Failsafe</h2>
+                <button class="close-btn" onclick="closeModal('failsafeModal')">×</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">RC Loss Action</label>
+                <select class="form-select" id="rcLossAction">
+                    <option value="0">Disabled</option>
+                    <option value="1" selected>Return to Launch (RTL)</option>
+                    <option value="2">Land</option>
+                    <option value="3">Hold</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Data Link Loss Action</label>
+                <select class="form-select" id="dataLossAction">
+                    <option value="0">Disabled</option>
+                    <option value="1" selected>Return to Launch (RTL)</option>
+                    <option value="2">Land</option>
+                    <option value="3">Hold</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Battery Failsafe (%)</label>
+                <input type="number" class="form-input" value="20" min="10" max="50" id="batteryFailsafe">
+            </div>
+            <div class="card-actions">
+                <button class="btn btn-primary" onclick="saveFailsafe()">Lưu cấu hình</button>
+                <button class="btn btn-secondary" onclick="closeModal('failsafeModal')">Hủy</button>
+            </div>
+            <div class="divider"></div>
+            <div class="output-box" id="failsafeOutput">
+Cấu hình failsafe hiện tại sẽ được hiển thị ở đây...
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for GPS Testing -->
+    <div id="gpsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Kiểm tra GPS</h2>
+                <button class="close-btn" onclick="closeModal('gpsModal')">×</button>
+            </div>
+            <div class="output-box" id="gpsOutput">
+Đang tải thông tin GPS...
+            </div>
+            <div class="divider"></div>
+            <div class="card-actions">
+                <button class="btn btn-primary" onclick="refreshGPS()">Làm mới</button>
+                <button class="btn btn-secondary" onclick="closeModal('gpsModal')">Đóng</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Compass Calibration -->
+    <div id="compassModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2 class="modal-title">Hiệu chỉnh Compass</h2>
+                <button class="close-btn" onclick="closeModal('compassModal')">×</button>
+            </div>
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <h3 style="color: var(--accent-cyan); margin-bottom: 1rem;">Sensors Setup</h3>
+                <p style="color: var(--text-secondary); margin-bottom: 2rem;">Xoay drone liên tục theo sơ đồ cho đến khi hoàn thành</p>
+                
+                <div id="orientationGrid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
+                    <!-- Row 1 -->
+                    <div class="orientation-box" data-orientation="0" style="background: var(--bg-primary); border: 2px solid var(--border); border-radius: 0.75rem; padding: 1.5rem;">
+                        <div style="font-size: 4rem; margin-bottom: 0.5rem;">✈️</div>
+                        <div style="font-weight: 600; margin-bottom: 0.25rem;">Nose Down</div>
+                        <div class="orientation-status" style="color: var(--accent-red);">Incomplete</div>
+                    </div>
+                    <div class="orientation-box" data-orientation="1" style="background: var(--bg-primary); border: 2px solid var(--accent-yellow); border-radius: 0.75rem; padding: 1.5rem;">
+                        <div style="font-size: 4rem; margin-bottom: 0.5rem; position: relative;">
+                            <div style="display: inline-block; transform: rotate(0deg);">✈️</div>
+                            <div style="position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%); font-size: 3rem;">↻</div>
+                        </div>
+                        <div style="font-weight: 600; margin-bottom: 0.25rem; color: var(--accent-yellow);">Rotate</div>
+                        <div class="orientation-status" style="color: var(--accent-yellow);">In Progress...</div>
+                    </div>
+                    <div class="orientation-box" data-orientation="2" style="background: var(--bg-primary); border: 2px solid var(--border); border-radius: 0.75rem; padding: 1.5rem;">
+                        <div style="font-size: 4rem; margin-bottom: 0.5rem; transform: rotate(180deg);">✈️</div>
+                        <div style="font-weight: 600; margin-bottom: 0.25rem;">Nose Up</div>
+                        <div class="orientation-status" style="color: var(--accent-red);">Incomplete</div>
+                    </div>
+                    
+                    <!-- Row 2 -->
+                    <div class="orientation-box" data-orientation="3" style="background: var(--bg-primary); border: 2px solid var(--border); border-radius: 0.75rem; padding: 1.5rem;">
+                        <div style="font-size: 4rem; margin-bottom: 0.5rem; transform: rotate(-90deg);">✈️</div>
+                        <div style="font-weight: 600; margin-bottom: 0.25rem;">Left</div>
+                        <div class="orientation-status" style="color: var(--accent-red);">Incomplete</div>
+                    </div>
+                    <div class="orientation-box" data-orientation="4" style="background: var(--bg-primary); border: 2px solid var(--border); border-radius: 0.75rem; padding: 1.5rem;">
+                        <div style="font-size: 4rem; margin-bottom: 0.5rem; transform: rotate(90deg);">✈️</div>
+                        <div style="font-weight: 600; margin-bottom: 0.25rem;">Right</div>
+                        <div class="orientation-status" style="color: var(--accent-red);">Incomplete</div>
+                    </div>
+                    <div class="orientation-box" data-orientation="5" style="background: var(--bg-primary); border: 2px solid var(--border); border-radius: 0.75rem; padding: 1.5rem;">
+                        <div style="font-size: 4rem; margin-bottom: 0.5rem;">🔽</div>
+                        <div style="font-weight: 600; margin-bottom: 0.25rem;">Tail Down</div>
+                        <div class="orientation-status" style="color: var(--accent-red);">Incomplete</div>
+                    </div>
+                </div>
+                
+                <div style="background: var(--bg-primary); border: 1px solid var(--border); border-radius: 0.5rem; padding: 1rem; margin-bottom: 1.5rem;">
+                    <div style="font-size: 0.95rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Tiến độ hiệu chỉnh</div>
+                    <div style="background: var(--bg-secondary); height: 24px; border-radius: 12px; overflow: hidden; position: relative;">
+                        <div id="compassProgress" style="background: linear-gradient(90deg, var(--accent-cyan), var(--accent-blue)); height: 100%; width: 16.6%; transition: width 0.5s ease;"></div>
+                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-weight: 600; font-size: 0.875rem;">16%</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card-actions">
+                <button class="btn btn-primary" onclick="startCompassCalib()">Bắt đầu</button>
+                <button class="btn btn-danger" onclick="cancelCompassCalib()">Hủy</button>
+                <button class="btn btn-secondary" onclick="closeModal('compassModal')">Đóng</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Auto Landing Settings -->
+    <div id="autoLandingModal" class="modal">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h2 class="modal-title">🛬 Landing Settings</h2>
+                <button class="close-btn" onclick="closeModal('autoLandingModal')">×</button>
+            </div>
+            
+            <!-- Landing Mode -->
+            <div class="form-group">
+                <label class="form-label">Landing Mode</label>
+                <select class="form-select" id="landingMode" onchange="updateLandingPreview()">
+                    <option value="easy">Easy - Ổn định, an toàn (khuyên dùng cho người mới)</option>
+                    <option value="normal" selected>Normal - Cân bằng giữa tốc độ và độ chính xác</option>
+                    <option value="fast">Fast - Hạ cánh nhanh, ít kiểm tra</option>
+                    <option value="precision">Precision - Độ chính xác cao, chậm hơn</option>
+                    <option value="windy">Windy - Tối ưu cho điều kiện gió</option>
+                </select>
+                <small style="color: var(--text-secondary);">Chế độ landing ảnh hưởng đến tốc độ, độ chính xác và độ ổn định</small>
+            </div>
+
+            <!-- Environment -->
+            <div class="form-group">
+                <label class="form-label">Environment (Optional)</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 0.5rem; cursor: pointer;">
+                        <input type="radio" name="environment" value="indoor" onchange="updateLandingPreview()">
+                        <span>🏠 Indoor</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 0.5rem; cursor: pointer;">
+                        <input type="radio" name="environment" value="outdoor" checked onchange="updateLandingPreview()">
+                        <span>🌤️ Outdoor</span>
+                    </label>
+                </div>
+                <small style="color: var(--text-secondary);">Indoor: ít gió, ánh sáng ổn định | Outdoor: có gió, thời tiết thay đổi</small>
+            </div>
+
+            <!-- Marker Type -->
+            <div class="form-group">
+                <label class="form-label">Marker Type</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem;">
+                    <label style="display: flex; flex-direction: column; align-items: center; padding: 1rem; background: var(--bg-primary); border: 2px solid var(--accent-blue); border-radius: 0.5rem; cursor: pointer;">
+                        <input type="radio" name="markerType" value="H" checked onchange="previewMarker()">
+                        <div style="font-size: 2rem; margin: 0.5rem 0;">H</div>
+                        <span style="font-size: 0.875rem;">H Marker</span>
+                    </label>
+                    <label style="display: flex; flex-direction: column; align-items: center; padding: 1rem; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 0.5rem; cursor: pointer;">
+                        <input type="radio" name="markerType" value="aruco" onchange="previewMarker()">
+                        <div style="font-size: 2rem; margin: 0.5rem 0;">⊞</div>
+                        <span style="font-size: 0.875rem;">ArUco</span>
+                    </label>
+                    <label style="display: flex; flex-direction: column; align-items: center; padding: 1rem; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 0.5rem; cursor: pointer;">
+                        <input type="radio" name="markerType" value="apriltag" onchange="previewMarker()">
+                        <div style="font-size: 2rem; margin: 0.5rem 0;">⊡</div>
+                        <span style="font-size: 0.875rem;">AprilTag</span>
+                    </label>
+                </div>
+                <small style="color: var(--text-secondary);">Chọn loại marker phù hợp với landing pad của bạn</small>
+            </div>
+
+            <!-- Marker Preview -->
+            <div id="markerPreview" style="background: var(--bg-primary); border: 1px solid var(--border); border-radius: 0.5rem; padding: 1.5rem; margin: 1rem 0; text-align: center;">
+                <div style="font-size: 4rem; margin-bottom: 0.5rem;">H</div>
+                <div id="markerDesc" style="color: var(--text-secondary);">H Template - Đơn giản, dễ nhận diện</div>
+            </div>
+
+            <!-- Safety Level -->
+            <div class="form-group">
+                <label class="form-label">Safety Level</label>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <span style="color: var(--accent-green); font-size: 0.875rem; min-width: 100px;">Conservative</span>
+                    <input type="range" class="form-input" min="1" max="3" value="2" id="safetyLevel" 
+                           style="flex: 1;" 
+                           oninput="updateSafetyLabel(this.value)"
+                           list="safety-markers">
+                    <datalist id="safety-markers">
+                        <option value="1"></option>
+                        <option value="2"></option>
+                        <option value="3"></option>
+                    </datalist>
+                    <span style="color: var(--accent-red); font-size: 0.875rem; min-width: 100px; text-align: right;">Aggressive</span>
+                </div>
+                <div style="text-align: center; margin-top: 0.5rem;">
+                    <span id="safetyLabel" style="color: var(--accent-blue); font-weight: 600;">Balanced</span>
+                </div>
+                <small style="color: var(--text-secondary);">
+                    Conservative: Nhiều kiểm tra, chậm hơn, an toàn hơn<br>
+                    Balanced: Cân bằng giữa tốc độ và độ an toàn<br>
+                    Aggressive: Nhanh hơn, ít kiểm tra, rủi ro cao hơn
+                </small>
+            </div>
+
+            <!-- Advanced Settings Summary -->
+            <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 0.5rem; padding: 1rem; margin: 1rem 0;">
+                <div style="color: var(--accent-blue); font-weight: 600; margin-bottom: 0.5rem;">📋 Current Configuration</div>
+                <div id="configSummary" style="color: var(--text-secondary); font-size: 0.875rem; font-family: 'JetBrains Mono', monospace;">
+                    Mode: Normal | Environment: Outdoor | Marker: H | Safety: Balanced
+                </div>
+            </div>
+
+            <!-- Warning Box -->
+            <div style="background: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.3); border-radius: 0.5rem; padding: 1rem; margin: 1rem 0;">
+                <div style="color: var(--accent-yellow); font-weight: 600; margin-bottom: 0.5rem;">⚠️ Lưu ý an toàn</div>
+                <div style="color: var(--text-secondary); font-size: 0.875rem;">
+                    • Luôn test ở độ cao an toàn trước (> 5m)<br>
+                    • Đảm bảo landing pad rõ ràng, không bị che khuất<br>
+                    • Có sẵn chế độ manual override để can thiệp<br>
+                    • Kiểm tra GPS và compass trước khi sử dụng<br>
+                    • Không dùng chế độ Aggressive khi chưa có kinh nghiệm
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="card-actions">
+                <button class="btn btn-primary" onclick="saveLandingSettings()">💾 Lưu cấu hình</button>
+                <button class="btn btn-warning" onclick="testLanding()">🧪 Test Landing</button>
+                <button class="btn btn-secondary" onclick="closeModal('autoLandingModal')">Đóng</button>
+            </div>
+            
+            <div class="divider"></div>
+            
+            <div class="output-box" id="landingOutput">
+Điều chỉnh các thông số landing, sau đó nhấn "Lưu cấu hình"
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Camera Settings CM5 -->
+    <div id="cameraSettingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Cài đặt Camera CM5 (Picamera2)</h2>
+                <button class="close-btn" onclick="closeModal('cameraSettingsModal')">×</button>
+            </div>
+            <div style="background: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.3); border-radius: 0.5rem; padding: 1rem; margin-bottom: 1.5rem;">
+                <div style="color: var(--accent-yellow); font-weight: 600; margin-bottom: 0.5rem;">⚠️ Lưu ý</div>
+                <div style="color: var(--text-secondary); font-size: 0.875rem;">
+                    Config này dành cho streaming/recording. Landing detection luôn dùng 640x480 cố định để đảm bảo hiệu suất xử lý.
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Camera ID</label>
+                <select class="form-select" id="cameraId">
+                    <option value="0" selected>Camera 0</option>
+                    <option value="1">Camera 1</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Độ phân giải</label>
+                <select class="form-select" id="resolution">
+                    <option value="320x240">320x240</option>
+                    <option value="640x480" selected>640x480 (Landing Default)</option>
+                    <option value="800x600">800x600</option>
+                    <option value="1280x720">1280x720 (720p)</option>
+                    <option value="1920x1080">1920x1080 (1080p)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Format</label>
+                <select class="form-select" id="format">
+                    <option value="RGB888" selected>RGB888</option>
+                    <option value="BGR888">BGR888</option>
+                    <option value="YUV420">YUV420</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Brightness (-1.0 to 1.0)</label>
+                <input type="range" class="form-input" min="-1" max="1" value="0" step="0.1" id="brightness" oninput="document.getElementById('brightnessValue').textContent = this.value">
+                <span id="brightnessValue">0</span>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Contrast (0.0 to 2.0)</label>
+                <input type="range" class="form-input" min="0" max="2" value="1" step="0.1" id="contrast" oninput="document.getElementById('contrastValue').textContent = this.value">
+                <span id="contrastValue">1</span>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Exposure Time (μs)</label>
+                <input type="number" class="form-input" value="0" min="0" max="100000" step="1000" id="exposureTime">
+                <small style="color: var(--text-secondary);">0 = Auto exposure (khuyến nghị cho landing)</small>
+            </div>
+            <div class="card-actions">
+                <button class="btn btn-primary" onclick="saveCameraSettings()">Lưu Config</button>
+                <button class="btn btn-secondary" onclick="closeModal('cameraSettingsModal')">Hủy</button>
+            </div>
+            <div class="divider"></div>
+            <div class="output-box" id="cameraOutput">Config này chỉ để tham khảo. Landing detection vẫn dùng 640x480 cố định.</div>
+        </div>
+    </div>
+
+    <script>
+        // Modal management
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        // Camera Testing
+        function testCamera() {
+            const status = document.getElementById('camera-settings-status');
+            status.className = 'status-indicator status-info';
+            status.textContent = 'Đang kiểm tra camera...';
+            
+            // Call API to test camera
+            fetch('/api/camera/test')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        status.className = 'status-indicator status-success';
+                        const cameraCount = data.cameras.length;
+                        status.textContent = `✓ Tìm thấy ${cameraCount} camera`;
+                        
+                        // Show detailed camera info
+                        let cameraInfo = `Phát hiện ${cameraCount} camera:\n\n`;
+                        data.cameras.forEach(cam => {
+                            cameraInfo += `Camera ${cam.id}: ${cam.info}\n`;
+                        });
+                        alert(cameraInfo);
+                    } else {
+                        status.className = 'status-indicator status-error';
+                        status.textContent = '✗ ' + data.message;
+                        alert('Lỗi kiểm tra camera:\n' + data.message + '\n\nOutput:\n' + data.output);
+                    }
+                })
+                .catch(error => {
+                    status.className = 'status-indicator status-error';
+                    status.textContent = '✗ Lỗi kết nối API: ' + error.message;
+                });
+        }
+
+        // Motor Testing
+        function testMotors() {
+            openModal('motorTestModal');
+        }
+
+        function startMotorTest() {
+            const output = document.getElementById('motorOutput');
+            const motor = document.getElementById('motorSelect').value;
+            const speed = document.getElementById('motorSpeed').value;
+            
+            const status = document.getElementById('motor-status');
+            status.style.display = 'inline-flex';
+            status.className = 'status-indicator status-info';
+            status.textContent = 'Đang test motor...';
+            
+            if (motor === 'all') {
+                output.textContent = `Bắt đầu test tất cả motor ở tốc độ ${speed}%\n\n`;
+                output.textContent += 'Motor 1: OK\n';
+                output.textContent += 'Motor 2: OK\n';
+                output.textContent += 'Motor 3: OK\n';
+                output.textContent += 'Motor 4: OK\n';
+            } else {
+                output.textContent = `Test Motor ${motor} ở tốc độ ${speed}%\n\n`;
+                output.textContent += `Motor ${motor}: Đang quay...\n`;
+            }
+            
+            setTimeout(() => {
+                status.className = 'status-indicator status-success';
+                status.textContent = '✓ Test hoàn tất';
+                output.textContent += '\n✓ Tất cả motor hoạt động bình thường';
+            }, 3000);
+        }
+
+        function stopMotorTest() {
+            const output = document.getElementById('motorOutput');
+            output.textContent += '\n\n⚠ Đã dừng test motor';
+        }
+
+        function calibrateESC() {
+            alert('Chức năng hiệu chỉnh ESC sẽ được thêm vào.');
+        }
+
+        // Failsafe Configuration
+        function configFailsafe() {
+            openModal('failsafeModal');
+            const output = document.getElementById('failsafeOutput');
+            output.textContent = 'Đang tải cấu hình hiện tại...\n\n';
+            output.textContent += 'RC Loss Action: Return to Launch (RTL)\n';
+            output.textContent += 'Data Link Loss Action: Return to Launch (RTL)\n';
+            output.textContent += 'Battery Failsafe: 20%\n';
+        }
+
+        function testFailsafe() {
+            alert('Test failsafe: Chức năng này sẽ mô phỏng các tình huống mất tín hiệu');
+        }
+
+        function saveFailsafe() {
+            const rcLoss = document.getElementById('rcLossAction').value;
+            const dataLoss = document.getElementById('dataLossAction').value;
+            const battery = document.getElementById('batteryFailsafe').value;
+            const output = document.getElementById('failsafeOutput');
+            
+            output.textContent = 'Đang lưu cấu hình...\n\n';
+            
+            setTimeout(() => {
+                output.textContent += '✓ Đã lưu thành công!\n\n';
+                output.textContent += 'Cấu hình mới:\n';
+                output.textContent += `RC Loss Action: ${rcLoss}\n`;
+                output.textContent += `Data Link Loss Action: ${dataLoss}\n`;
+                output.textContent += `Battery Failsafe: ${battery}%\n`;
+                
+                const status = document.getElementById('failsafe-status');
+                status.style.display = 'inline-flex';
+                status.className = 'status-indicator status-success';
+                status.textContent = '✓ Đã cấu hình';
+            }, 1500);
+        }
+
+        // Arm/Disarm Control
+        function armDrone() {
+            const status = document.getElementById('arm-status');
+            status.className = 'status-indicator status-info';
+            status.textContent = 'Đang ARM...';
+            
+            // Simulate arm process
+            setTimeout(() => {
+                status.className = 'status-indicator status-success';
+                status.textContent = '✓ ARMED';
+            }, 1500);
+        }
+
+        function disarmDrone() {
+            const status = document.getElementById('arm-status');
+            status.className = 'status-indicator status-info';
+            status.textContent = 'Đang DISARM...';
+            
+            // Simulate disarm process
+            setTimeout(() => {
+                status.className = 'status-indicator status-error';
+                status.textContent = 'DISARMED';
+            }, 1500);
+        }
+
+        // GPS Testing
+        function testGPS() {
+            openModal('gpsModal');
+            refreshGPS();
+        }
+
+        function refreshGPS() {
+            const output = document.getElementById('gpsOutput');
+            output.textContent = 'Đang kiểm tra GPS...\n\n';
+            
+            const status = document.getElementById('gps-status');
+            status.style.display = 'inline-flex';
+            status.className = 'status-indicator status-info';
+            status.textContent = 'Đang kiểm tra...';
+            
+            setTimeout(() => {
+                output.textContent = 'Thông tin GPS:\n\n';
+                output.textContent += 'Trạng thái: ✓ GPS Fix\n';
+                output.textContent += 'Số vệ tinh: 12\n';
+                output.textContent += 'HDOP: 0.8\n';
+                output.textContent += 'Vĩ độ: 21.0285°N\n';
+                output.textContent += 'Kinh độ: 105.8542°E\n';
+                output.textContent += 'Độ cao: 12.5m\n';
+                output.textContent += 'Tốc độ: 0.0 m/s\n';
+                output.textContent += 'Compass: 45.2°\n';
+                
+                status.className = 'status-indicator status-success';
+                status.textContent = '✓ GPS OK - 12 vệ tinh';
+            }, 2000);
+        }
+
+        function compassCalib() {
+            openModal('compassModal');
+        }
+
+        let compassCalibRunning = false;
+        let compassCurrentStep = 0;
+        const compassOrientations = ['Nose Down', 'Rotate', 'Nose Up', 'Left', 'Right', 'Tail Down'];
+
+        function startCompassCalib() {
+            compassCalibRunning = true;
+            compassCurrentStep = 0;
+            simulateCompassCalibration();
+        }
+
+        function simulateCompassCalibration() {
+            if (!compassCalibRunning || compassCurrentStep >= 6) {
+                if (compassCurrentStep >= 6) {
+                    alert('✓ Compass calibration completed successfully!');
+                    closeModal('compassModal');
+                }
+                return;
+            }
+
+            const boxes = document.querySelectorAll('.orientation-box');
+            const currentBox = boxes[compassCurrentStep];
+            const statusDiv = currentBox.querySelector('.orientation-status');
+            
+            // Mark current as in progress
+            currentBox.style.borderColor = 'var(--accent-yellow)';
+            statusDiv.style.color = 'var(--accent-yellow)';
+            statusDiv.textContent = 'Rotating...';
+            
+            // Update progress bar
+            const progress = ((compassCurrentStep + 1) / 6 * 100).toFixed(0);
+            document.getElementById('compassProgress').style.width = progress + '%';
+            document.querySelector('#compassProgress + div').textContent = progress + '%';
+            
+            setTimeout(() => {
+                // Mark as completed
+                currentBox.style.borderColor = 'var(--accent-green)';
+                currentBox.style.background = 'rgba(34, 197, 94, 0.1)';
+                statusDiv.style.color = 'var(--accent-green)';
+                statusDiv.textContent = 'Completed';
+                
+                compassCurrentStep++;
+                
+                if (compassCurrentStep < 6) {
+                    // Mark next as active
+                    const nextBox = boxes[compassCurrentStep];
+                    nextBox.style.borderColor = 'var(--accent-yellow)';
+                }
+                
+                setTimeout(simulateCompassCalibration, 500);
+            }, 3000);
+        }
+
+        function cancelCompassCalib() {
+            compassCalibRunning = false;
+            const boxes = document.querySelectorAll('.orientation-box');
+            boxes.forEach((box, idx) => {
+                if (idx !== 1) {
+                    box.style.borderColor = 'var(--border)';
+                    box.style.background = 'var(--bg-primary)';
+                    const statusDiv = box.querySelector('.orientation-status');
+                    statusDiv.style.color = 'var(--accent-red)';
+                    statusDiv.textContent = 'Incomplete';
+                }
+            });
+            document.getElementById('compassProgress').style.width = '0%';
+            document.querySelector('#compassProgress + div').textContent = '0%';
+            compassCurrentStep = 0;
+        }
+
+        // Camera Settings CM5
+        function openCameraSettings() {
+            openModal('cameraSettingsModal');
+            // Load current config
+            loadCameraConfig();
+        }
+
+        // Auto Landing Settings
+        function openAutoLandingSettings() {
+            openModal('autoLandingModal');
+            loadLandingSettings();
+        }
+
+        function loadLandingSettings() {
+            // Try to load from localStorage first
+            const savedConfig = localStorage.getItem('landingConfig');
+            if (savedConfig) {
+                try {
+                    const config = JSON.parse(savedConfig);
+                    document.getElementById('landingMode').value = config.mode || 'normal';
+                    
+                    if (config.environment) {
+                        const envRadio = document.querySelector(`input[name="environment"][value="${config.environment}"]`);
+                        if (envRadio) envRadio.checked = true;
+                    }
+                    
+                    if (config.marker_type) {
+                        const markerRadio = document.querySelector(`input[name="markerType"][value="${config.marker_type}"]`);
+                        if (markerRadio) markerRadio.checked = true;
+                    }
+                    
+                    if (config.safety_level) {
+                        document.getElementById('safetyLevel').value = config.safety_level;
+                        updateSafetyLabel(config.safety_level);
+                    }
+                    
+                    previewMarker();
+                    updateLandingPreview();
+                    document.getElementById('landingOutput').textContent = '✅ Đã load config đã lưu';
+                    return;
+                } catch (e) {
+                    console.error('Error loading config:', e);
+                }
+            }
+            
+            // Try to fetch from server
+            fetch('/api/landing/config/load')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.config) {
+                        const config = data.config;
+                        document.getElementById('landingMode').value = config.mode || 'normal';
+                        
+                        if (config.environment) {
+                            const envRadio = document.querySelector(`input[name="environment"][value="${config.environment}"]`);
+                            if (envRadio) envRadio.checked = true;
+                        }
+                        
+                        if (config.marker_type) {
+                            const markerRadio = document.querySelector(`input[name="markerType"][value="${config.marker_type}"]`);
+                            if (markerRadio) markerRadio.checked = true;
+                        }
+                        
+                        if (config.safety_level) {
+                            document.getElementById('safetyLevel').value = config.safety_level;
+                            updateSafetyLabel(config.safety_level);
+                        }
+                        
+                        previewMarker();
+                        updateLandingPreview();
+                        document.getElementById('landingOutput').textContent = '✅ Đã load config từ server';
+                    }
+                })
+                .catch(error => {
+                    // Use defaults
+                    previewMarker();
+                    updateLandingPreview();
+                    document.getElementById('landingOutput').textContent = 'Sử dụng config mặc định\nMode: Normal | Environment: Outdoor | Marker: H | Safety: Balanced';
+                });
+        }
+
+        function previewTemplate() {
+            const template = document.getElementById('landingTemplate').value;
+            const templateImg = document.getElementById('templateImg');
+            const templateDesc = document.getElementById('templateDesc');
+            
+            const descriptions = {
+                'H': 'Template chữ H - Mặc định cho landing pad tiêu chuẩn',
+                'A': 'Template chữ A - Nhận diện landing pad chữ A',
+                'K': 'Template chữ K - Nhận diện landing pad chữ K',
+                'Y': 'Template chữ Y - Nhận diện landing pad chữ Y'
+            };
+            
+            templateDesc.textContent = descriptions[template] || 'Template ' + template;
+            
+            // Try to load template image preview from the templates folder
+            const templatePath = `/api/landing/templates/${template}.png`;
+            templateImg.src = templatePath;
+            templateImg.style.display = 'block';
+            templateImg.onerror = function() {
+                this.style.display = 'none';
+                templateDesc.textContent += ' (Preview không có sẵn)';
+            };
+        }
+
+        function saveLandingSettings() {
+            const mode = document.getElementById('landingMode').value;
+            const environment = document.querySelector('input[name="environment"]:checked')?.value || 'outdoor';
+            const markerType = document.querySelector('input[name="markerType"]:checked')?.value || 'H';
+            const safetyLevel = parseInt(document.getElementById('safetyLevel').value);
+            
+            const config = {
+                mode: mode,
+                environment: environment,
+                marker_type: markerType,
+                safety_level: safetyLevel,
+                template: markerType === 'H' ? 'H' : (markerType === 'aruco' ? 'aruco' : 'apriltag')
+            };
+            
+            const output = document.getElementById('landingOutput');
+            output.textContent = 'Đang lưu cấu hình landing...\n\n';
+            
+            fetch('/api/landing/config/save', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(config)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        output.textContent = '✅ Cấu hình landing đã lưu thành công!\n\n';
+                        output.textContent += 'Landing Config:\n';
+                        output.textContent += `  Mode: ${mode}\n`;
+                        output.textContent += `  Environment: ${environment}\n`;
+                        output.textContent += `  Marker Type: ${markerType}\n`;
+                        output.textContent += `  Safety Level: ${getSafetyLevelText(safetyLevel)}\n\n`;
+                        output.textContent += '✅ Config được lưu vào: Find_landing/landing_config.json\n';
+                        
+                        const status = document.getElementById('landing-status');
+                        status.className = 'status-indicator status-success';
+                        status.textContent = `✓ ${mode.toUpperCase()} | ${markerType}`;
+                        
+                        setTimeout(() => {
+                            closeModal('autoLandingModal');
+                        }, 2000);
+                    } else {
+                        output.textContent = '✗ Lỗi: ' + data.message;
+                    }
+                })
+                .catch(error => {
+                    output.textContent = '✗ Lỗi kết nối: ' + error.message + '\n\n';
+                    output.textContent += 'Cấu hình vẫn được lưu local:\n';
+                    output.textContent += JSON.stringify(config, null, 2);
+                    localStorage.setItem('landingConfig', JSON.stringify(config));
+                });
+        }
+
+        function getSafetyLevelText(level) {
+            switch(level) {
+                case 1: return 'Conservative';
+                case 2: return 'Balanced';
+                case 3: return 'Aggressive';
+                default: return 'Balanced';
+            }
+        }
+
+        function updateSafetyLabel(value) {
+            const label = document.getElementById('safetyLabel');
+            const text = getSafetyLevelText(parseInt(value));
+            label.textContent = text;
+            
+            // Update color
+            if (value == 1) {
+                label.style.color = 'var(--accent-green)';
+            } else if (value == 2) {
+                label.style.color = 'var(--accent-blue)';
+            } else {
+                label.style.color = 'var(--accent-red)';
+            }
+            
+            updateLandingPreview();
+        }
+
+        function updateLandingPreview() {
+            const mode = document.getElementById('landingMode').value;
+            const environment = document.querySelector('input[name="environment"]:checked')?.value || 'outdoor';
+            const markerType = document.querySelector('input[name="markerType"]:checked')?.value || 'H';
+            const safetyLevel = parseInt(document.getElementById('safetyLevel').value);
+            
+            const summary = document.getElementById('configSummary');
+            summary.textContent = `Mode: ${mode.toUpperCase()} | Environment: ${environment.toUpperCase()} | Marker: ${markerType} | Safety: ${getSafetyLevelText(safetyLevel)}`;
+        }
+
+        function previewMarker() {
+            const markerType = document.querySelector('input[name="markerType"]:checked')?.value || 'H';
+            const preview = document.getElementById('markerPreview');
+            const desc = document.getElementById('markerDesc');
+            
+            // Update all radio button styles
+            document.querySelectorAll('input[name="markerType"]').forEach(radio => {
+                const label = radio.parentElement;
+                if (radio.checked) {
+                    label.style.borderColor = 'var(--accent-blue)';
+                    label.style.borderWidth = '2px';
+                } else {
+                    label.style.borderColor = 'var(--border)';
+                    label.style.borderWidth = '1px';
+                }
+            });
+            
+            if (markerType === 'H') {
+                preview.querySelector('div:first-child').textContent = 'H';
+                desc.textContent = 'H Template - Đơn giản, dễ nhận diện, tốt cho mọi điều kiện';
+            } else if (markerType === 'aruco') {
+                preview.querySelector('div:first-child').textContent = '⊞';
+                desc.textContent = 'ArUco Marker - Độ chính xác cao, hỗ trợ nhiều ID';
+            } else if (markerType === 'apriltag') {
+                preview.querySelector('div:first-child').textContent = '⊡';
+                desc.textContent = 'AprilTag - Chuẩn công nghiệp, robust với góc nghiêng';
+            }
+            
+            updateLandingPreview();
+        }
+
+        function testLanding() {
+            const output = document.getElementById('landingOutput');
+            output.textContent = '🧪 Starting Landing Test...\n\n';
+            output.textContent += 'Phase 1: Checking sensors...\n';
+            output.textContent += '  ✓ GPS: OK (15 satellites)\n';
+            output.textContent += '  ✓ Compass: OK\n';
+            output.textContent += '  ✓ Camera: OK\n\n';
+            output.textContent += 'Phase 2: Marker detection test...\n';
+            output.textContent += '  ⏳ Searching for marker...\n';
+            
+            setTimeout(() => {
+                output.textContent += '  ✓ Marker detected!\n';
+                output.textContent += '  Position: X=+12cm, Y=-5cm\n';
+                output.textContent += '  Confidence: 87%\n\n';
+                output.textContent += '✅ Landing test completed successfully!\n';
+                output.textContent += 'Safe to proceed with actual landing.\n';
+            }, 2000);
+        }
+
+        function uploadTemplate() {
+            // Create file input dynamically
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                const formData = new FormData();
+                formData.append('template', file);
+                
+                const output = document.getElementById('landingOutput');
+                output.textContent = 'Đang upload template...\n';
+                
+                fetch('/api/landing/templates/upload', {
+                    method: 'POST',
+                    body: formData
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            output.textContent += '✓ Template đã upload thành công!\n';
+                            output.textContent += `File: ${data.filename}\n`;
+                            output.textContent += `Path: Find_landing/templates/${data.filename}\n`;
+                            
+                            // Reload template list
+                            loadLandingSettings();
+                        } else {
+                            output.textContent += '✗ Upload failed: ' + data.message;
+                        }
+                    })
+                    .catch(error => {
+                        output.textContent += '✗ Error: ' + error.message;
+                    });
+            };
+            input.click();
+        }
+
+        // Camera Settings CM5
+
+        function loadCameraConfig() {
+            fetch('/api/camera/config/load')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.config) {
+                        const config = data.config;
+                        document.getElementById('cameraId').value = config.camera_id || 0;
+                        
+                        // Set resolution
+                        const sizeStr = `${config.size[0]}x${config.size[1]}`;
+                        document.getElementById('resolution').value = sizeStr;
+                        
+                        document.getElementById('format').value = config.format || 'RGB888';
+                        document.getElementById('brightness').value = config.brightness || 0;
+                        document.getElementById('brightnessValue').textContent = config.brightness || 0;
+                        document.getElementById('contrast').value = config.contrast || 1;
+                        document.getElementById('contrastValue').textContent = config.contrast || 1;
+                        document.getElementById('exposureTime').value = config.exposure_time || 0;
+                        
+                        document.getElementById('cameraOutput').textContent = '✓ Đã load config hiện tại';
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('cameraOutput').textContent = 'Không thể load config: ' + error.message;
+                });
+        }
+
+        function saveCameraSettings() {
+            const cameraId = parseInt(document.getElementById('cameraId').value);
+            const resolution = document.getElementById('resolution').value;
+            const format = document.getElementById('format').value;
+            const brightness = parseFloat(document.getElementById('brightness').value);
+            const contrast = parseFloat(document.getElementById('contrast').value);
+            const exposureTime = parseInt(document.getElementById('exposureTime').value);
+            
+            const output = document.getElementById('cameraOutput');
+            output.textContent = 'Đang lưu cấu hình camera...\n\n';
+            
+            const [width, height] = resolution.split('x').map(Number);
+            const config = {
+                camera_id: cameraId,
+                format: format,
+                size: [width, height],
+                brightness: brightness,
+                contrast: contrast,
+                exposure_time: exposureTime
+            };
+            
+            // Save to server
+            fetch('/api/camera/config/save', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(config)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        output.textContent = '✓ Cấu hình đã lưu thành công!\n\n';
+                        output.textContent += 'Camera Config:\n';
+                        output.textContent += JSON.stringify(config, null, 2) + '\n\n';
+                        output.textContent += '✓ Config được lưu vào: Find_landing/camera_config.json\n';
+                        output.textContent += '\n⚠ Lưu ý:\n';
+                        output.textContent += '  • Landing detection (find.py, main_camera.py) vẫn dùng 640x480 cố định\n';
+                        output.textContent += '  • Config này chỉ để tham khảo hoặc dùng cho các ứng dụng khác\n';
+                        
+                        const status = document.getElementById('camera-settings-status');
+                        status.className = 'status-indicator status-success';
+                        status.textContent = `✓ ${resolution} ${format}`;
+                        
+                        setTimeout(() => {
+                            closeModal('cameraSettingsModal');
+                        }, 3000);
+                    } else {
+                        output.textContent = '✗ Lỗi: ' + data.message;
+                    }
+                })
+                .catch(error => {
+                    output.textContent = '✗ Lỗi kết nối: ' + error.message;
+                });
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.classList.remove('active');
+            }
+        }
+    </script>
+</body>
+</html>

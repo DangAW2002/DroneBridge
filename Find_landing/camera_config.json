@@ -1,0 +1,12 @@
+{
+  "camera_id": 0,
+  "size": [1280, 720],
+  "framerate": 30,
+  "format": "RGB888",
+  "mediamtx_host": "45.117.171.237",
+  "mediamtx_port": 8554,
+  "drone_id": "0fd84717-c520-4d47-ba68-98e5dfcad059",
+  "bitrate": 5000,
+  "detection_enabled": true,
+  "overlay_enabled": true
+}
