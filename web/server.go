@@ -14,8 +14,8 @@ import (
 	"github.com/bluenviron/gomavlib/v3"
 	"github.com/bluenviron/gomavlib/v3/pkg/dialects/common"
 
-	"DroneBridge/auth"
-	"DroneBridge/metrics"
+	"DroneBridge/internal/auth"
+	"DroneBridge/internal/metrics"
 )
 
 //go:embed static/*
@@ -68,7 +68,7 @@ type ParameterListStatus struct {
 // MAVLinkBridge handles MAVLink communication for parameter setting
 type MAVLinkBridge struct {
 	node            *gomavlib.Node
-	pixhawkSysID    byte
+	pixhawkSysID    uint8
 	connected       bool
 	mutex           sync.RWMutex
 	responseTimeout time.Duration
@@ -113,7 +113,7 @@ func HandleParamValue(msg *common.MessageParamValue) {
 }
 
 // HandleHeartbeat receives heartbeat from forwarder
-func HandleHeartbeat(sysID byte) {
+func HandleHeartbeat(sysID uint8) {
 	if bridge != nil {
 		bridge.mutex.Lock()
 		if !bridge.connected {
@@ -172,7 +172,7 @@ func (b *MAVLinkBridge) IsConnected() bool {
 	return b.connected
 }
 
-func (b *MAVLinkBridge) GetSystemID() byte {
+func (b *MAVLinkBridge) GetSystemID() uint8 {
 	if b == nil {
 		return 0
 	}
@@ -192,7 +192,7 @@ func (b *MAVLinkBridge) GetSystemID() byte {
 // - Forwarder calls HandleHeartbeat(sysID) -> web bridge stores the ID
 // - Web server can retrieve it via GetPixhawkSystemID() for parameter operations
 // - Forwarder logs actual sysID for verification
-func GetPixhawkSystemID() byte {
+func GetPixhawkSystemID() uint8 {
 	if bridge == nil {
 		return 1 // Fallback to default if bridge not initialized
 	}

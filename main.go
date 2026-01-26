@@ -9,19 +9,25 @@ import (
 
 	"github.com/bluenviron/gomavlib/v3"
 
-	"DroneBridge/auth"
 	"DroneBridge/config"
-	"DroneBridge/forwarder"
-	"DroneBridge/logger"
+	"DroneBridge/internal/auth"
+	"DroneBridge/internal/camera"
+	"DroneBridge/internal/forwarder"
+	"DroneBridge/internal/logger"
 	"DroneBridge/web"
 )
 
 func main() {
 	// Parse command-line flags
-	configFile := flag.String("config", "config.yaml", "Path to configuration file")
+	configFile := flag.String("config", "config/config.yaml", "Path to configuration file")
 	logLevel := flag.String("log", "", "Log level: debug, info, warn, error (overrides config)")
 	register := flag.Bool("register", false, "Register this drone with the fleet server")
 	flag.Parse()
+
+	// Create logs directory if it doesn't exist
+	if err := os.MkdirAll("logs", 0755); err != nil {
+		logger.Warn("Failed to create logs directory: %v", err)
+	}
 
 	// Load configuration
 	logger.Info("Loading configuration from %s", *configFile)
@@ -164,6 +170,41 @@ func main() {
 		}
 	}
 
+	// STEP 5: Initialize video streaming
+	logger.Info("[STARTUP] 📹 Initializing video streaming...")
+
+	if cfg.Camera.Enabled {
+		// Convert YAML config to streaming config
+		streamingCfg := &camera.StreamingConfig{
+			CameraID:         cfg.Camera.CameraID,
+			Size:             []int{cfg.Camera.Resolution.Width, cfg.Camera.Resolution.Height},
+			Framerate:        cfg.Camera.Framerate,
+			Format:           cfg.Camera.Format,
+			MediaMTXHost:     cfg.Camera.MediaMTX.Host,
+			MediaMTXPort:     cfg.Camera.MediaMTX.Port,
+			DroneID:          cfg.Auth.UUID, // Use auth UUID automatically
+			Bitrate:          cfg.Camera.Encoder.Bitrate,
+			OverlayEnabled:   cfg.Camera.Features.Overlay,
+			DetectionEnabled: cfg.Camera.Features.Detection,
+			KeyframeInterval: cfg.Camera.Encoder.KeyframeInterval,
+			Preset:           cfg.Camera.Encoder.Preset,
+			Tune:             cfg.Camera.Encoder.Tune,
+			Enabled:          cfg.Camera.Enabled,
+		}
+
+		if err := camera.InitializeFromConfig(streamingCfg, cfg.Auth.Host, cfg.Auth.UUID); err != nil {
+			logger.Warn("[STARTUP] Failed to initialize camera: %v", err)
+		} else {
+			if err := camera.StartAllCameras(); err != nil {
+				logger.Warn("[STARTUP] Failed to start cameras: %v", err)
+			} else {
+				logger.Info("[STARTUP] ✅ Video streaming initialized")
+			}
+		}
+	} else {
+		logger.Info("[STARTUP] Video streaming disabled in config")
+	}
+
 	// Start web server with auth client and drone UUID
 	web.StartServer(cfg.Web.Port, authClient, cfg.Auth.UUID)
 
@@ -177,7 +218,17 @@ func main() {
 	logger.Info("MAVLink forwarder running. Press Ctrl+C to stop.")
 	<-sigCh
 
+	// Graceful shutdown
+	logger.Info("[SHUTDOWN] Initiating graceful shutdown...")
+
+	// Stop cameras first
+	camera.GracefulShutdown()
+
 	// Stop forwarder
 	fwd.Stop()
-	logger.Info("MAVLink forwarder shutdown complete")
+
+	// Cleanup resources
+	camera.Cleanup()
+
+	logger.Info("[SHUTDOWN] ✅ Complete")
 }

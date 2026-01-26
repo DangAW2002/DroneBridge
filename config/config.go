@@ -14,6 +14,7 @@ type Config struct {
 	Network  NetworkConfig  `yaml:"network"`
 	Ethernet EthernetConfig `yaml:"ethernet"`
 	Web      WebConfig      `yaml:"web"`
+	Camera   CameraConfig   `yaml:"camera"`
 }
 
 // LogConfig contains logging settings
@@ -58,6 +59,44 @@ type NetworkConfig struct {
 // WebConfig contains web server settings
 type WebConfig struct {
 	Port int `yaml:"port"`
+}
+
+// CameraConfig contains camera streaming settings
+type CameraConfig struct {
+	Enabled    bool             `yaml:"enabled"`
+	CameraID   int              `yaml:"camera_id"`
+	Resolution CameraResolution `yaml:"resolution"`
+	Framerate  int              `yaml:"framerate"`
+	Format     string           `yaml:"format"`
+	MediaMTX   MediaMTXConfig   `yaml:"mediamtx"`
+	Encoder    EncoderConfig    `yaml:"encoder"`
+	Features   FeaturesConfig   `yaml:"features"`
+}
+
+// CameraResolution contains resolution settings
+type CameraResolution struct {
+	Width  int `yaml:"width"`
+	Height int `yaml:"height"`
+}
+
+// MediaMTXConfig contains RTSP server settings
+type MediaMTXConfig struct {
+	Host string `yaml:"host"`
+	Port int    `yaml:"port"`
+}
+
+// EncoderConfig contains H.264 encoding settings
+type EncoderConfig struct {
+	Bitrate          int    `yaml:"bitrate"`
+	Preset           string `yaml:"preset"`
+	Tune             string `yaml:"tune"`
+	KeyframeInterval int    `yaml:"keyframe_interval"`
+}
+
+// FeaturesConfig contains optional features
+type FeaturesConfig struct {
+	Overlay   bool `yaml:"overlay"`
+	Detection bool `yaml:"detection"`
 }
 
 // FrequencyConfig contains message sending frequencies in Hz
