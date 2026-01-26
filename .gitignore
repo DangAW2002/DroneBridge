@@ -1,5 +1,5 @@
 bin/
 build_tmp/
-
+logs/
 __pycache__/
 .drone_secret
