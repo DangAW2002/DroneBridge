@@ -67,11 +67,26 @@ class CameraStreamer:
         return default_config
     
     def _find_gst_launch(self):
-        """Find gst-launch-1.0 executable (Raspberry Pi)"""
+        """Find gst-launch-1.0 executable on Windows"""
+        # First try: Check if it's in PATH
         gst_path = shutil.which('gst-launch-1.0')
-        if not gst_path:
-            gst_path = '/usr/bin/gst-launch-1.0'
-        return gst_path if os.path.exists(gst_path) else None
+        if gst_path:
+            return gst_path
+        
+        # Second try: Common Windows installation paths
+        common_paths = [
+            r"C:\gstreamer\1.0\msvc_x86_64\bin\gst-launch-1.0.exe",
+            r"C:\gstreamer\1.0\msvc_x86\bin\gst-launch-1.0.exe",
+            r"C:\Program Files\GStreamer\1.0\bin\gst-launch-1.0.exe",
+            r"C:\Program Files (x86)\GStreamer\1.0\bin\gst-launch-1.0.exe",
+            r"C:\Tools\GStreamer\bin\gst-launch-1.0.exe",
+        ]
+        
+        for path in common_paths:
+            if os.path.exists(path):
+                return path
+        
+        return None
     
     def save_config(self):
         """Save current configuration to JSON file"""
@@ -93,23 +108,25 @@ class CameraStreamer:
         # Use RTSP for publishing to MediaMTX
         rtsp_url = f"rtsp://{self.config['mediamtx_host']}:{self.config['mediamtx_port']}/{drone_id_encoded}"
         
-        pipe_path = self.pipe_path
+        # Windows path format for pipe
+        pipe_path = self.pipe_path.replace("\\", "\\\\")
         
-        # Push RTSP stream trực tiếp đến MediaMTX bằng rtspclientsink
+        # Read raw BGR frames from pipe and encode to H264 (using speed-preset for Windows compatibility)
         pipeline = (
             f"filesrc location={pipe_path} ! "
             f"rawvideoparse width={width} height={height} format=bgr framerate={fps}/1 ! "
             f"videoconvert ! video/x-raw,format=I420 ! "
-            f"x264enc bitrate={self.config['bitrate']} speed-preset=ultrafast tune=zerolatency ! "
+            f"x264enc bitrate={self.config['bitrate']} speed-preset=ultrafast "
+            f"key-int-max={self.config.get('keyframe_interval', 30)} ! "
             f"h264parse ! "
-            f"rtspclientsink location={rtsp_url} protocols=tcp"
+            f"rtspclientsink location={rtsp_url}"
         )
         
         print(f"\n GStreamer Pipeline (Python Processed Stream):")
         print(f"   Source: Pipe ({self.pipe_path})")
         print(f"   Resolution: {width}x{height} @ {fps}fps")
         print(f"   Bitrate: {self.config['bitrate']} kbps")
-        print(f"   Pushing to: {rtsp_url}")
+        print(f"   RTSP: {rtsp_url}")
         print(f"   WebRTC: http://{self.config['mediamtx_host']}:8889/{drone_id_encoded}/whep")
         print(f"   HLS: http://{self.config['mediamtx_host']}:8888/{drone_id_encoded}/index.m3u8")
         print()
@@ -123,24 +140,26 @@ class CameraStreamer:
         drone_id_encoded = quote(self.config['drone_id'], safe='')
         rtsp_url = f"rtsp://{self.config['mediamtx_host']}:{self.config['mediamtx_port']}/{drone_id_encoded}"
         
-        # Push RTSP stream trực tiếp đến MediaMTX
+        # x264enc on Windows uses speed-preset, not preset
         pipeline = (
             f"fdsrc fd=0 ! "
             f"rawvideoparse width={width} height={height} format=bgr framerate={fps}/1 ! "
             f"videoconvert ! video/x-raw,format=I420 ! "
-            f"x264enc bitrate={self.config['bitrate']} speed-preset=ultrafast tune=zerolatency ! "
+            f"x264enc bitrate={self.config['bitrate']} speed-preset=ultrafast "
+            f"key-int-max={self.config.get('keyframe_interval', 30)} ! "
             f"h264parse ! "
-            f"rtspclientsink location={rtsp_url} protocols=tcp"
+            f"rtspclientsink location={rtsp_url}"
         )
         
         # Check if GStreamer is available
         if not self.gst_launch_path:
             print("✗ GStreamer not found!")
             print("\n Please install GStreamer:")
-            print("   sudo apt update")
-            print("   sudo apt install -y gstreamer1.0-tools gstreamer1.0-plugins-good")
-            print("   sudo apt install -y gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly")
-            print("   sudo apt install -y gstreamer1.0-libav gstreamer1.0-v4l2")
+            print("   Windows: Download from https://gstreamer.freedesktop.org/download/")
+            print("   Or: choco install gstreamer (if using Chocolatey)")
+            print("\n After installation, add to PATH or check common paths:")
+            print("   - C:\\gstreamer\\1.0\\msvc_x86_64\\bin")
+            print("   - C:\\Program Files\\GStreamer\\1.0\\bin")
             return False
         
         max_retries = 3
