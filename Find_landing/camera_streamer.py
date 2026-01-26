@@ -1,4 +1,4 @@
-
+# -*- coding: utf-8 -*-
 """
 Camera Streamer with Landing Detection Overlay
 Streams processed video with detection overlay to MediaMTX server
@@ -11,9 +11,11 @@ import json
 import os
 import sys
 import time
+import platform
 from threading import Thread, Event
 import signal
-
+from urllib.parse import quote
+import shutil
 
 import find
 
@@ -26,12 +28,11 @@ class CameraStreamer:
         self.detection_result = None
         self.gst_process = None
         self.pipe_path = f"/tmp/camera_stream_{os.getpid()}.fifo"
-        
+        self.gst_launch_path = self._find_gst_launch()
         
         self.frames_sent = 0
         self.detections_count = 0
         self.start_time = None
-        
         
         self.template_contour = None
         self.template_image = None
@@ -45,7 +46,7 @@ class CameraStreamer:
             'format': 'RGB888',
             'mediamtx_host': '45.117.171.237',
             'mediamtx_port': 8554,
-            'drone_id': 'bé gái đẹp trai',
+            'drone_id': 'test_mycamera',
             'bitrate': 5000,
             'overlay_enabled': True,
             'detection_enabled': True,
@@ -59,83 +60,152 @@ class CameraStreamer:
                 with open(self.config_path, 'r') as f:
                     loaded_config = json.load(f)
                     default_config.update(loaded_config)
-                    print(f"✓ Loaded config from {self.config_path}")
+                    print(f"[OK] Loaded config from {self.config_path}")
             except Exception as e:
-                print(f"⚠ Error loading config: {e}, using defaults")
+                print(f"[WARN] Error loading config: {e}, using defaults")
         
         return default_config
+    
+    def _find_gst_launch(self):
+        """Find gst-launch-1.0 executable on Windows"""
+        # First try: Check if it's in PATH
+        gst_path = shutil.which('gst-launch-1.0')
+        if gst_path:
+            return gst_path
+        
+        # Second try: Common Windows installation paths
+        common_paths = [
+            r"C:\gstreamer\1.0\msvc_x86_64\bin\gst-launch-1.0.exe",
+            r"C:\gstreamer\1.0\msvc_x86\bin\gst-launch-1.0.exe",
+            r"C:\Program Files\GStreamer\1.0\bin\gst-launch-1.0.exe",
+            r"C:\Program Files (x86)\GStreamer\1.0\bin\gst-launch-1.0.exe",
+            r"C:\Tools\GStreamer\bin\gst-launch-1.0.exe",
+        ]
+        
+        for path in common_paths:
+            if os.path.exists(path):
+                return path
+        
+        return None
     
     def save_config(self):
         """Save current configuration to JSON file"""
         try:
             with open(self.config_path, 'w') as f:
                 json.dump(self.config, f, indent=2)
-            print(f"✓ Config saved to {self.config_path}")
+            print(f" Config saved to {self.config_path}")
         except Exception as e:
-            print(f"⚠ Error saving config: {e}")
+            print(f" Error saving config: {e}")
     
     def build_gstreamer_pipeline(self):
-        """Build GStreamer pipeline for RTSP streaming directly from camera"""
+        """Build GStreamer pipeline for RTSP streaming from Python-processed frames via pipe"""
         width, height = self.config['size']
         fps = self.config['framerate']
-        camera_id = self.config['camera_id']
         
-        # Use RTSP for publishing to MediaMTX (tested and working)
-        rtsp_url = f"rtsp://{self.config['mediamtx_host']}:{self.config['mediamtx_port']}/{self.config['drone_id']}"
+        # URL-encode drone ID to handle special characters
+        drone_id_encoded = quote(self.config['drone_id'], safe='')
         
-        # Direct pipeline from v4l2src (no Python overlay)
+        # Use RTSP for publishing to MediaMTX
+        rtsp_url = f"rtsp://{self.config['mediamtx_host']}:{self.config['mediamtx_port']}/{drone_id_encoded}"
+        
+        # Windows path format for pipe
+        pipe_path = self.pipe_path.replace("\\", "\\\\")
+        
+        # Read raw BGR frames from pipe and encode to H264 (using speed-preset for Windows compatibility)
         pipeline = (
-            f"v4l2src device=/dev/video{camera_id} io-mode=mmap ! "
-            f"image/jpeg,width={width},height={height} ! "
-            f"jpegdec ! "
-            f"videorate ! "
-            f"video/x-raw,framerate={fps}/1 ! "
-            f"videoconvert ! "
-            f"x264enc tune={self.config['tune']} speed-preset={self.config['preset']} "
-            f"bitrate={self.config['bitrate']} key-int-max={self.config['keyframe_interval']} ! "
+            f"filesrc location={pipe_path} ! "
+            f"rawvideoparse width={width} height={height} format=bgr framerate={fps}/1 ! "
+            f"videoconvert ! video/x-raw,format=I420 ! "
+            f"x264enc bitrate={self.config['bitrate']} speed-preset=ultrafast "
+            f"key-int-max={self.config.get('keyframe_interval', 30)} ! "
             f"h264parse ! "
             f"rtspclientsink location={rtsp_url}"
         )
         
-        print(f"\n📡 GStreamer Pipeline (Direct Camera Stream):")
-        print(f"   Camera: /dev/video{camera_id}")
+        print(f"\n GStreamer Pipeline (Python Processed Stream):")
+        print(f"   Source: Pipe ({self.pipe_path})")
         print(f"   Resolution: {width}x{height} @ {fps}fps")
         print(f"   Bitrate: {self.config['bitrate']} kbps")
         print(f"   RTSP: {rtsp_url}")
-        print(f"   WebRTC: http://{self.config['mediamtx_host']}:8889/{self.config['drone_id']}/whep")
-        print(f"   HLS: http://{self.config['mediamtx_host']}:8888/{self.config['drone_id']}/index.m3u8")
+        print(f"   WebRTC: http://{self.config['mediamtx_host']}:8889/{drone_id_encoded}/whep")
+        print(f"   HLS: http://{self.config['mediamtx_host']}:8888/{drone_id_encoded}/index.m3u8")
         print()
         return pipeline
     
-    def start_gstreamer(self):
-        """Start GStreamer pipeline (direct from camera, no pipe needed)"""
-        pipeline = self.build_gstreamer_pipeline()
+    def start_gstreamer(self, pipe_stdin):
+        """Start GStreamer pipeline to stream from stdin (Windows compatible)"""
+        # Build stdin-based pipeline (fdsrc reads from file descriptor 0)
+        width, height = self.config['size']
+        fps = self.config['framerate']
+        drone_id_encoded = quote(self.config['drone_id'], safe='')
+        rtsp_url = f"rtsp://{self.config['mediamtx_host']}:{self.config['mediamtx_port']}/{drone_id_encoded}"
         
-        try:
-            # Run GStreamer directly from camera
-            self.gst_process = subprocess.Popen(
-                f"gst-launch-1.0 {pipeline}",
-                shell=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
-            )
-            
-            time.sleep(2)  
-            
-            if self.gst_process.poll() is None:
-                print("✅ GStreamer pipeline running")
-                return True
-            else:
-                # Get error output
-                _, stderr = self.gst_process.communicate(timeout=1)
-                print(f"✗ GStreamer exited with code {self.gst_process.returncode}")
-                if stderr:
-                    print(f"✗ Error: {stderr.decode()}")
-                return False
-                
-        except Exception as e:
-            print(f"✗ Failed to start GStreamer: {e}")
+        # x264enc on Windows uses speed-preset, not preset
+        pipeline = (
+            f"fdsrc fd=0 ! "
+            f"rawvideoparse width={width} height={height} format=bgr framerate={fps}/1 ! "
+            f"videoconvert ! video/x-raw,format=I420 ! "
+            f"x264enc bitrate={self.config['bitrate']} speed-preset=ultrafast "
+            f"key-int-max={self.config.get('keyframe_interval', 30)} ! "
+            f"h264parse ! "
+            f"rtspclientsink location={rtsp_url}"
+        )
+        
+        # Check if GStreamer is available
+        if not self.gst_launch_path:
+            print("✗ GStreamer not found!")
+            print("\n Please install GStreamer:")
+            print("   Windows: Download from https://gstreamer.freedesktop.org/download/")
+            print("   Or: choco install gstreamer (if using Chocolatey)")
+            print("\n After installation, add to PATH or check common paths:")
+            print("   - C:\\gstreamer\\1.0\\msvc_x86_64\\bin")
+            print("   - C:\\Program Files\\GStreamer\\1.0\\bin")
             return False
+        
+        max_retries = 3
+        retry_count = 0
+        
+        while retry_count < max_retries:
+            try:
+                # Use gst-launch-1.0 with full path
+                cmd = [self.gst_launch_path] + pipeline.split(" ")
+                
+                if retry_count == 0:
+                    print(f" Using GStreamer: {self.gst_launch_path}")
+                else:
+                    print(f" Retry {retry_count}/{max_retries-1}...")
+                
+                self.gst_process = subprocess.Popen(
+                    cmd,
+                    stdin=pipe_stdin,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE
+                )
+                
+                time.sleep(2)  # Wait for GStreamer to connect to pipe
+                
+                if self.gst_process.poll() is None:
+                    print(" GStreamer pipeline running (waiting for frames...)")
+                    return True
+                else:
+                    # Get error output
+                    _, stderr = self.gst_process.communicate(timeout=1)
+                    error_msg = stderr.decode() if stderr else "Unknown error"
+                    
+                    if retry_count < max_retries - 1:
+                        print(f"️  Attempt {retry_count + 1} failed: {error_msg.split(chr(10))[0]}")
+                        retry_count += 1
+                        time.sleep(1)
+                    else:
+                        print(f"✗ GStreamer exited with code {self.gst_process.returncode}")
+                        print(f"✗ Error: {error_msg}")
+                        return False
+                    
+            except Exception as e:
+                print(f"✗ Failed to start GStreamer: {e}")
+                return False
+        
+        return False
     
     def draw_overlay(self, frame, detection_result):
         """Draw detection overlay on frame - same as find.py local mode"""
@@ -216,7 +286,7 @@ class CameraStreamer:
         
         
         if cam_manager.is_camera_active(camera_id):
-            print("⚠️  Camera already in use, releasing...")
+            print("️  Camera already in use, releasing...")
             cam_manager.release_camera(camera_id, user_id)
             time.sleep(1)
         
@@ -231,7 +301,7 @@ class CameraStreamer:
             self.running.clear()
             return
         
-        print("✓ Camera initialized")
+        print(" Camera initialized")
         
         # Load detection template
         if self.config['detection_enabled']:
@@ -245,21 +315,21 @@ class CameraStreamer:
                         with open(landing_config_path, 'r') as f:
                             landing_config = json.load(f)
                             template_name = landing_config.get('template', 'H')
-                            print(f"✓ Using template: {template_name} from landing config")
+                            print(f" Using template: {template_name} from landing config")
                     except Exception as e:
-                        print(f"⚠️  Error loading landing config: {e}, using default template H")
+                        print(f"️  Error loading landing config: {e}, using default template H")
                 
                 # Load template file
                 template_path = os.path.join(os.path.dirname(__file__), "templates", f"{template_name}.png")
                 if not os.path.exists(template_path):
                     # Fallback to H.png if specified template doesn't exist
-                    print(f"⚠️  Template {template_name}.png not found, using H.png")
+                    print(f"️  Template {template_name}.png not found, using H.png")
                     template_path = os.path.join(os.path.dirname(__file__), "templates", "H.png")
                 
                 self.template_contour, self.template_image = find.load_template(template_path)
-                print(f"✓ Detection template loaded: {os.path.basename(template_path)}")
+                print(f" Detection template loaded: {os.path.basename(template_path)}")
             except Exception as e:
-                print(f"⚠️  Detection init failed: {e}")
+                print(f"️  Detection init failed: {e}")
                 self.config['detection_enabled'] = False
         else:
             print("ℹ️  Detection disabled")
@@ -359,7 +429,7 @@ class CameraStreamer:
                             self.detection_result = {'detected': False}
                             
                     except Exception as e:
-                        print(f"⚠️  Detection error: {e}")
+                        print(f"️  Detection error: {e}")
                 
                 
                 if self.config.get('overlay_enabled', True):
@@ -376,7 +446,7 @@ class CameraStreamer:
                     self.frames_sent += 1
                     
                     if frame_count == 1:
-                        print(f"✅ First frame streamed!")
+                        print(f" First frame streamed!")
                         
                 except Exception as e:
                     print(f"✗ Write error: {e}")
@@ -388,7 +458,7 @@ class CameraStreamer:
                     fps_actual = self.frames_sent / elapsed
                     detection_rate = (self.detections_count / self.frames_sent * 100) if self.frames_sent > 0 else 0
                     
-                    print(f"📊 Stats: {self.frames_sent} frames @ {fps_actual:.1f} fps | "
+                    print(f" Stats: {self.frames_sent} frames @ {fps_actual:.1f} fps | "
                           f"Detections: {self.detections_count} ({detection_rate:.1f}%)")
                     last_stats_time = current_time
                     
@@ -398,7 +468,7 @@ class CameraStreamer:
             traceback.print_exc()
         finally:
             cam_manager.release_camera(camera_id, user_id)
-            print("✓ Camera released")
+            print(" Camera released")
     
     def get_direction(self, offset_x, offset_y, threshold=20):
         """Get direction text from offset values"""
@@ -412,50 +482,75 @@ class CameraStreamer:
         return direction.strip()
     
     def start(self):
-        """Start streaming directly from camera (no Python overlay)"""
+        """Start streaming with detection overlay"""
         if not self.running.is_set():
             self.running.set()
         
+        os_name = platform.system()
+        camera_device_display = f"Camera {self.config['camera_id']}" if os_name == "Windows" else f"/dev/video{self.config['camera_id']}"
+        drone_id_encoded = quote(self.config['drone_id'], safe='')
+        
         print("="*60)
-        print("🚀 Starting Camera Streamer (Direct Mode)")
+        print(" Starting Camera Streamer (Python Processing Mode)")
         print("="*60)
-        print(f"📹 Camera: /dev/video{self.config['camera_id']}")
-        print(f"📐 Resolution: {self.config['size'][0]}x{self.config['size'][1]} @ {self.config['framerate']} fps")
-        print(f"📡 Server: {self.config['mediamtx_host']}:{self.config['mediamtx_port']}")
-        print(f"🆔 Drone ID: {self.config['drone_id']}")
+        print(f"️  Platform: {os_name}")
+        print(f" Camera: {camera_device_display}")
+        print(f" Resolution: {self.config['size'][0]}x{self.config['size'][1]} @ {self.config['framerate']} fps")
+        print(f" Server: {self.config['mediamtx_host']}:{self.config['mediamtx_port']}")
+        print(f" Drone ID: {self.config['drone_id']}")
         print("="*60)
-        print("⚠️  Note: Detection overlay disabled in direct mode")
+        print(f"️  Detection: {'ENABLED' if self.config.get('detection_enabled', True) else 'DISABLED'}")
+        print(f"️  Overlay: {'ENABLED' if self.config.get('overlay_enabled', True) else 'DISABLED'}")
         print("="*60)
         
-        # Start GStreamer directly (no pipe needed)
-        if not self.start_gstreamer():
+        # Create pipe for stdin streaming (works on Windows and Linux)
+        pipe_read, pipe_write = os.pipe()
+        
+        # Start capture and detection thread
+        capture_thread = Thread(target=self.capture_and_stream_thread, args=(pipe_write,), daemon=False)
+        capture_thread.start()
+        
+        # Start GStreamer to stream from pipe stdin
+        if not self.start_gstreamer(pipe_read):
             self.running.clear()
+            try:
+                os.close(pipe_read)
+                os.close(pipe_write)
+            except:
+                pass
             return
         
-        print("\n✅ Camera streaming started!")
-        print(f"📺 View at:")
-        print(f"   - WebRTC: http://{self.config['mediamtx_host']}:8889/{self.config['drone_id']}/whep")
-        print(f"   - HLS: http://{self.config['mediamtx_host']}:8888/{self.config['drone_id']}/index.m3u8")
-        print(f"   - RTSP: rtsp://{self.config['mediamtx_host']}:{self.config['mediamtx_port']}/{self.config['drone_id']}")
+        print("\n Camera streaming started!")
+        print(f" View at:")
+        print(f"   - WebRTC: http://{self.config['mediamtx_host']}:8889/{drone_id_encoded}/whep")
+        print(f"   - HLS: http://{self.config['mediamtx_host']}:8888/{drone_id_encoded}/index.m3u8")
+        print(f"   - RTSP: rtsp://{self.config['mediamtx_host']}:{self.config['mediamtx_port']}/{drone_id_encoded}")
         print("\nPress Ctrl+C to stop...\n")
         
         # Wait for interrupt
         try:
-            while self.running.is_set() and self.gst_process.poll() is None:
+            while self.running.is_set() and self.gst_process and self.gst_process.poll() is None:
                 time.sleep(1)
             
-            if self.gst_process.poll() is not None:
-                print(f"\n⚠️  GStreamer stopped unexpectedly (exit code: {self.gst_process.returncode})")
+            if self.gst_process and self.gst_process.poll() is not None:
+                print(f"\n️  GStreamer stopped unexpectedly (exit code: {self.gst_process.returncode})")
                 self.running.clear()
                 
         except KeyboardInterrupt:
-            print("\n🛑 Stopping camera streamer...")
+            print("\n Stopping camera streamer...")
             self.stop()
+        finally:
+            try:
+                os.close(pipe_read)
+                os.close(pipe_write)
+            except:
+                pass
+            capture_thread.join(timeout=5)
     
     
     def stop(self):
         """Stop camera streaming"""
-        print("\n🛑 Stopping camera streamer...")
+        print("\n Stopping camera streamer...")
         self.running.clear()
         
         # Stop GStreamer
@@ -463,17 +558,17 @@ class CameraStreamer:
             try:
                 self.gst_process.terminate()
                 self.gst_process.wait(timeout=5)
-                print("✓ GStreamer stopped")
+                print(" GStreamer stopped")
             except:
                 self.gst_process.kill()
-                print("✓ GStreamer killed")
+                print(" GStreamer killed")
         
-        print("✓ Camera streamer stopped")
+        print(" Camera streamer stopped")
 
 
 def signal_handler(sig, frame):
     """Handle Ctrl+C gracefully"""
-    print("\n⚠ Signal received, stopping...")
+    print("\n Signal received, stopping...")
     sys.exit(0)
 
 

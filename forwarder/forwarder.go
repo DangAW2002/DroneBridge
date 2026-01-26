@@ -423,6 +423,10 @@ func New(cfg *config.Config, authClient *auth.Client, listenerNode *gomavlib.Nod
 
 	// Get actual Pixhawk System ID from web bridge (was captured from heartbeat)
 	pixhawkSysID := web.GetPixhawkSystemID()
+	// Use default System ID if Pixhawk not available (e.g., when allow_missing_pixhawk=true)
+	if pixhawkSysID == 0 {
+		pixhawkSysID = 1 // Default valid System ID for missing Pixhawk
+	}
 	logger.Info("[FORWARDER] Using Pixhawk System ID: %d for OutSystemID", pixhawkSysID)
 
 	// Create sender node to forward to server WITH correct system ID
