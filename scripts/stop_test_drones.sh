@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Change directory to DroneBridge root
+cd "$(dirname "$0")/.."
+
 PID_FILE="test_drones.pids"
 
 if [ ! -f "$PID_FILE" ]; then

@@ -1,6 +1,9 @@
 @echo off
 setlocal enabledelayedexpansion
 
+REM Change directory to DroneBridge root (parent of script folder)
+cd /d "%~dp0.."
+
 REM Base configuration
 set "BASE_LISTEN_PORT=14560"
 set "BASE_WEB_PORT=8090"

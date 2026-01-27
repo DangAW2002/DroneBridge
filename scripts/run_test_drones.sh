@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Change directory to DroneBridge root
+cd "$(dirname "$0")/.."
+
 BASE_LISTEN_PORT=14560
 BASE_WEB_PORT=8090
 DRONE_EXEC="./DroneBridge"
@@ -72,4 +75,4 @@ done
 echo ""
 echo "All instances started."
 echo "PIDs saved to $PID_FILE"
-echo "To stop these specific instances, run: ./stop_test_drones.sh"
+echo "To stop these specific instances, run: ./scripts/stop_test_drones.sh"
