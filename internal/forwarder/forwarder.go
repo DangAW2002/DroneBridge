@@ -81,6 +81,9 @@ type Forwarder struct {
 
 	// Verbose mode for detailed message parsing
 	verboseMode bool
+
+	// Server IP for loop prevention
+	serverIP string
 }
 
 // getLocalIP returns the current local IP address used for outbound connections
@@ -327,6 +330,14 @@ func setupInterfaceIP(ifaceName, ipAddr, subnet string) error {
 func DiscoverPixhawk(cfg *config.Config, timeout time.Duration) (string, uint8, error) {
 	logger.Info("[DISCOVERY] 🔎 Starting Pixhawk discovery via Broadcast...")
 
+	// Resolve server IP to avoid self-discovery loop
+	serverIP := ""
+	serverIPs, err := net.LookupIP(cfg.Auth.Host)
+	if err == nil && len(serverIPs) > 0 {
+		serverIP = serverIPs[0].String()
+		logger.Info("[DISCOVERY] Server IP resolved to %s (will be explicitly skipped)", serverIP)
+	}
+
 	// Get ethernet IP for UDP broadcast
 	localEthIP, broadcastEthIP, ifaceName, ethErr := getEthernetIP(cfg)
 	if ethErr != nil || localEthIP == "" || broadcastEthIP == "" {
@@ -367,19 +378,29 @@ func DiscoverPixhawk(cfg *config.Config, timeout time.Duration) (string, uint8, 
 			return "", 0, fmt.Errorf("discovery timed out after %v", timeout)
 		case event := <-eventCh:
 			if frame, ok := event.(*gomavlib.EventFrame); ok {
-				if _, ok := frame.Message().(*common.MessageHeartbeat); ok {
+				if hb, ok := frame.Message().(*common.MessageHeartbeat); ok {
+					sysID := frame.SystemID()
+
+					// 1. Skip GCS heartbeats (from server or other GCS)
+					if sysID == 255 || hb.Type == common.MAV_TYPE_GCS {
+						logger.Debug("[DISCOVERY] Skipping GCS heartbeat (SysID: %d, Type: %d)", sysID, hb.Type)
+						continue
+					}
+
+					// 2. Skip invalid autopilots (strictly Pixhawk-like devices)
+					if hb.Autopilot == common.MAV_AUTOPILOT_INVALID {
+						logger.Debug("[DISCOVERY] Skipping invalid autopilot (SysID: %d)", sysID)
+						continue
+					}
+
 					// In gomavlib v3, the Channel string usually contains the remote address
-					// e.g. "udp:10.41.10.2:14550"
 					chanStr := frame.Channel.String()
 					remoteAddr := chanStr
 
-					// If it's a UDP channel, it usually looks like "udp:remote_ip:port" or "udp:remote_ip:port (local_ip:port)"
-					// We'll try to extract the IP part
+					// Extraction of remote IP from channel string
 					parts := strings.Split(chanStr, ":")
 					if len(parts) >= 3 && parts[0] == "udp" {
-						// remoteAddr is the part after "udp:"
 						remoteAddr = strings.Join(parts[1:3], ":")
-						// Trim any local address info in parentheses if it exists
 						if idx := strings.Index(remoteAddr, " "); idx != -1 {
 							remoteAddr = remoteAddr[:idx]
 						}
@@ -391,8 +412,13 @@ func DiscoverPixhawk(cfg *config.Config, timeout time.Duration) (string, uint8, 
 						ip = remoteAddr
 					}
 
-					sysID := frame.SystemID()
-					logger.Info("[DISCOVERY] ✅ Found Pixhawk at %s (System ID: %d) from channel: %s", ip, sysID, chanStr)
+					// 3. Skip Server IP (explicit loop prevention)
+					if serverIP != "" && ip == serverIP {
+						logger.Debug("[DISCOVERY] Skipping heartbeat from Server IP: %s", ip)
+						continue
+					}
+
+					logger.Info("[DISCOVERY] ✅ Found Pixhawk at %s (System ID: %d, Autopilot: %d) from channel: %s", ip, sysID, hb.Autopilot, chanStr)
 					return ip, sysID, nil
 				}
 			}
@@ -510,6 +536,13 @@ func New(cfg *config.Config, authClient *auth.Client, listenerNode *gomavlib.Nod
 		localIP = ""
 	}
 
+	// Resolve server IP for loop prevention
+	sIP := ""
+	sIPs, _ := net.LookupIP(cfg.Auth.Host)
+	if len(sIPs) > 0 {
+		sIP = sIPs[0].String()
+	}
+
 	fwd := &Forwarder{
 		cfg:              cfg,
 		listenerNode:     listenerNode,
@@ -523,6 +556,7 @@ func New(cfg *config.Config, authClient *auth.Client, listenerNode *gomavlib.Nod
 		udpHeartbeatSent: make(chan struct{}, 1),
 		lastSeqNum:       make(map[uint8]uint8),
 		verboseMode:      cfg.Log.Verbose,
+		serverIP:         sIP,
 	}
 
 	// Wire up network error callback
@@ -657,12 +691,27 @@ func (f *Forwarder) receiveAndForward() {
 				seqNum := e.Frame.GetSequenceNumber()
 				messageCount++
 
-				// Skip messages not from Pixhawk (filter by SystemID 1, or from our own GCS)
+				// Skip messages not from Pixhawk (filter by SystemID 255, GCS type, or Server IP)
 				// Only forward messages from flight controller (typically SystemID 1)
 				if sysID == 255 {
-					// Skip GCS messages (our own heartbeats)
-					logger.Debug("[SKIP] GCS message %s (SysID: %d)", msgTypeName, sysID)
+					logger.Debug("[SKIP] GCS message %s (SysID: 255)", msgTypeName)
 					continue
+				}
+
+				if hb, ok := msg.(*common.MessageHeartbeat); ok {
+					if hb.Type == common.MAV_TYPE_GCS {
+						logger.Debug("[SKIP] GCS heartbeat %s (Type: GCS)", msgTypeName)
+						continue
+					}
+				}
+
+				// Optional: Filter by source IP if it's the server (loop protection)
+				if f.serverIP != "" {
+					chanStr := e.Channel.String()
+					if strings.Contains(chanStr, f.serverIP) {
+						logger.Debug("[SKIP] Message from Server IP %s: %s", f.serverIP, msgTypeName)
+						continue
+					}
 				}
 
 				// Deduplicate messages by checking sequence number
