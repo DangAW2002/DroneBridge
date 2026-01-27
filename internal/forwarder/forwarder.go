@@ -358,9 +358,10 @@ func DiscoverPixhawk(cfg *config.Config, timeout time.Duration) (string, uint8, 
 		ifaceName, localEthIP, cfg.Network.BroadcastPort, broadcastEthIP, cfg.Network.LocalListenPort)
 
 	discoveryNode, err := gomavlib.NewNode(gomavlib.NodeConf{
-		Endpoints:  endpoints,
-		Dialect:    mavlink_custom.GetCombinedDialect(),
-		OutVersion: gomavlib.V2,
+		Endpoints:   endpoints,
+		Dialect:     mavlink_custom.GetCombinedDialect(),
+		OutVersion:  gomavlib.V2,
+		OutSystemID: 255, // Identify as a GCS during discovery
 	})
 	if err != nil {
 		return "", 0, fmt.Errorf("failed to create discovery node: %w", err)
