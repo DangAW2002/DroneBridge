@@ -8,6 +8,10 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -87,6 +91,55 @@ type MAVLinkBridge struct {
 
 var bridge *MAVLinkBridge
 var bridgeOnce sync.Once
+
+// Camera streamer management
+var cameraCmd *exec.Cmd
+var cameraMutex sync.Mutex
+
+// startCameraStreamer starts the camera streamer automatically
+func startCameraStreamer() {
+	// Kill any existing camera process first
+	exec.Command("sudo", "pkill", "-f", "camera_streamer.py").Run()
+	time.Sleep(1 * time.Second)
+	
+	cameraMutex.Lock()
+	defer cameraMutex.Unlock()
+
+	if cameraCmd != nil && cameraCmd.Process != nil {
+		log.Printf("[CAMERA] Camera streamer is already running")
+		return
+	}
+
+	cameraCmd = exec.Command("python3", "/home/pi/HBQ_server_drone/Find_landing/camera_streamer.py")
+	cameraCmd.Dir = "/home/pi/HBQ_server_drone/Find_landing"
+	
+	// Pipe output to logs
+	cameraCmd.Stdout = os.Stdout
+	cameraCmd.Stderr = os.Stderr
+	
+	err := cameraCmd.Start()
+	if err != nil {
+		log.Printf("[CAMERA] Failed to start camera streamer: %v", err)
+		cameraCmd = nil
+		return
+	}
+
+	log.Printf("[CAMERA] Camera streamer started automatically (PID: %d)", cameraCmd.Process.Pid)
+	
+	// Monitor camera process
+	go func() {
+		err := cameraCmd.Wait()
+		cameraMutex.Lock()
+		cameraCmd = nil
+		cameraMutex.Unlock()
+		
+		if err != nil {
+			log.Printf("[CAMERA] Camera streamer exited with error: %v", err)
+		} else {
+			log.Printf("[CAMERA] Camera streamer stopped")
+		}
+	}()
+}
 
 // InitMAVLinkBridge initializes the MAVLink bridge with the given node
 func InitMAVLinkBridge(node *gomavlib.Node) {
@@ -822,6 +875,406 @@ func StartServer(port int, authClient *auth.Client, droneUUID string) {
 			"message": "API key deleted successfully",
 		})
 	})
+
+	// API endpoint to list available landing templates
+	http.HandleFunc("/api/landing/templates", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-cache")
+		setCORSHeaders(w)
+
+		if r.Method == http.MethodOptions {
+			return
+		}
+
+		templatesDir := "/home/pi/HBQ_server_drone/Find_landing/templates"
+		files, err := os.ReadDir(templatesDir)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": false,
+				"error":   err.Error(),
+			})
+			return
+		}
+
+		var templates []string
+		for _, file := range files {
+			if !file.IsDir() && strings.HasSuffix(strings.ToLower(file.Name()), ".png") {
+				// Remove .png extension to get template name
+				name := strings.TrimSuffix(file.Name(), filepath.Ext(file.Name()))
+				templates = append(templates, name)
+			}
+		}
+
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success":   true,
+			"templates": templates,
+		})
+	})
+
+	// Serve template images
+	http.HandleFunc("/templates/", func(w http.ResponseWriter, r *http.Request) {
+		templateName := strings.TrimPrefix(r.URL.Path, "/templates/")
+		templatePath := filepath.Join("/home/pi/HBQ_server_drone/Find_landing/templates", templateName)
+		
+		// Security check - prevent directory traversal
+		if strings.Contains(templateName, "..") {
+			http.Error(w, "Invalid template name", http.StatusBadRequest)
+			return
+		}
+		
+		// Check if file exists
+		if _, err := os.Stat(templatePath); os.IsNotExist(err) {
+			http.NotFound(w, r)
+			return
+		}
+		
+		w.Header().Set("Content-Type", "image/png")
+		w.Header().Set("Cache-Control", "public, max-age=86400")
+		http.ServeFile(w, r, templatePath)
+	})
+
+	// API endpoint to start camera streamer
+	http.HandleFunc("/api/camera/start", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-cache")
+		setCORSHeaders(w)
+
+		if r.Method == http.MethodOptions {
+			return
+		}
+
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		cameraMutex.Lock()
+		defer cameraMutex.Unlock()
+
+		if cameraCmd != nil && cameraCmd.Process != nil {
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": false,
+				"message": "Camera streamer is already running",
+			})
+			return
+		}
+
+		cameraCmd = exec.Command("python3", "/home/pi/HBQ_server_drone/Find_landing/camera_streamer.py")
+		cameraCmd.Dir = "/home/pi/HBQ_server_drone/Find_landing"
+		err := cameraCmd.Start()
+		if err != nil {
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": false,
+				"message": fmt.Sprintf("Failed to start camera: %v", err),
+			})
+			return
+		}
+
+		log.Printf("[CAMERA] Camera streamer started (PID: %d)", cameraCmd.Process.Pid)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": true,
+			"message": "Camera streamer started",
+			"pid":     cameraCmd.Process.Pid,
+		})
+	})
+
+	// API endpoint to stop camera streamer
+	http.HandleFunc("/api/camera/stop", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-cache")
+		setCORSHeaders(w)
+
+		if r.Method == http.MethodOptions {
+			return
+		}
+
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		cameraMutex.Lock()
+		defer cameraMutex.Unlock()
+
+		if cameraCmd == nil || cameraCmd.Process == nil {
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": false,
+				"message": "Camera streamer is not running",
+			})
+			return
+		}
+
+		err := cameraCmd.Process.Kill()
+		if err != nil {
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": false,
+				"message": fmt.Sprintf("Failed to stop camera: %v", err),
+			})
+			return
+		}
+
+		cameraCmd.Wait()
+		cameraCmd = nil
+		log.Printf("[CAMERA] Camera streamer stopped")
+
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": true,
+			"message": "Camera streamer stopped",
+		})
+	})
+
+	// API endpoint to check camera status
+	http.HandleFunc("/api/camera/status", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-cache")
+		setCORSHeaders(w)
+
+		if r.Method == http.MethodOptions {
+			return
+		}
+
+		cameraMutex.Lock()
+		running := cameraCmd != nil && cameraCmd.Process != nil
+		var pid int
+		if running {
+			pid = cameraCmd.Process.Pid
+		}
+		cameraMutex.Unlock()
+
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"running": running,
+			"pid":     pid,
+		})
+	})
+
+	// API endpoint to save landing config
+	http.HandleFunc("/api/landing/config/save", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-cache")
+		setCORSHeaders(w)
+
+		if r.Method == http.MethodOptions {
+			return
+		}
+
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		var config map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&config); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": false,
+				"message": "Invalid JSON: " + err.Error(),
+			})
+			return
+		}
+
+		configPath := "/home/pi/HBQ_server_drone/Find_landing/landing_config.json"
+		configData, err := json.MarshalIndent(config, "", "  ")
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": false,
+				"message": "Failed to marshal config: " + err.Error(),
+			})
+			return
+		}
+
+		if err := os.WriteFile(configPath, configData, 0644); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": false,
+				"message": "Failed to save config: " + err.Error(),
+			})
+			return
+		}
+
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": true,
+			"message": "Landing config saved successfully",
+			"path":    configPath,
+		})
+	})
+
+	// API endpoint to load landing config
+	http.HandleFunc("/api/landing/config/load", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-cache")
+		setCORSHeaders(w)
+
+		if r.Method == http.MethodOptions {
+			return
+		}
+
+		configPath := "/home/pi/HBQ_server_drone/Find_landing/landing_config.json"
+		configData, err := os.ReadFile(configPath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"success": false,
+					"message": "Config file not found",
+				})
+			} else {
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"success": false,
+					"message": "Failed to read config: " + err.Error(),
+				})
+			}
+			return
+		}
+
+		var config map[string]interface{}
+		if err := json.Unmarshal(configData, &config); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": false,
+				"message": "Failed to parse config: " + err.Error(),
+			})
+			return
+		}
+
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": true,
+			"config":  config,
+		})
+	})
+
+	// API endpoint to get real-time network info
+	http.HandleFunc("/api/network/status", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-cache")
+		setCORSHeaders(w)
+
+		if r.Method == http.MethodOptions {
+			return
+		}
+
+		// Read connection status file
+		statusFile := "/tmp/connection_status.json"
+		statusData, err := os.ReadFile(statusFile)
+		
+		var networkInfo map[string]interface{}
+		
+		if err == nil {
+			json.Unmarshal(statusData, &networkInfo)
+		} else {
+		// Return default structure if file doesn't exist
+		networkInfo = map[string]interface{}{
+			"4g": map[string]interface{}{"status": "unavailable"},
+			"wifi": map[string]interface{}{"status": "unavailable"},
+			"ethernet": map[string]interface{}{"status": "unavailable"},
+			"active_interface": nil,
+			"timestamp": time.Now().Unix(),
+		}
+	}
+
+	// Return network status directly (not wrapped)
+	json.NewEncoder(w).Encode(networkInfo)
+			return
+		}
+
+		if r.Method == http.MethodPost {
+			// Set priority
+			var req map[string]string
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"success": false,
+					"message": "Invalid JSON",
+				})
+				return
+			}
+
+			priority := req["priority"]
+			if priority != "4g" && priority != "wifi" {
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"success": false,
+					"message": "Invalid priority. Use: 4g or wifi",
+				})
+				return
+			}
+
+			// Run connection_manager.py to set priority
+			cmd := exec.Command("python3", "/home/pi/connection_manager.py", "priority", priority)
+			if err := cmd.Run(); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"success": false,
+					"message": "Failed to set priority",
+				})
+				return
+			}
+
+			// Trigger reconnect with new priority
+			go func() {
+				time.Sleep(1 * time.Second)
+				exec.Command("python3", "/home/pi/connection_manager.py", "once").Run()
+			}()
+
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": true,
+				"message": "Priority set to " + priority,
+				"priority": priority,
+			})
+		} else {
+			// Get priority
+			configData, err := os.ReadFile("/home/pi/connection_config.json")
+			var config map[string]interface{}
+			
+			if err == nil {
+				json.Unmarshal(configData, &config)
+			} else {
+				config = map[string]interface{}{"priority": "4g"}
+			}
+
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": true,
+				"priority": config["priority"],
+			})
+		}
+	})
+
+	// API endpoint to trigger network reconnection
+	http.HandleFunc("/api/network/reconnect", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-cache")
+		setCORSHeaders(w)
+
+		if r.Method == http.MethodOptions {
+			return
+		}
+
+		if r.Method != http.MethodPost {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": false,
+				"message": "Method not allowed",
+			})
+			return
+		}
+
+		// Run connection_manager.py to reconnect
+		go func() {
+			cmd := exec.Command("python3", "/home/pi/connection_manager.py", "once")
+			if err := cmd.Run(); err != nil {
+				log.Printf("Failed to trigger reconnection: %v", err)
+			}
+		}()
+
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": true,
+			"message": "Reconnection triggered",
+		})
+	})
+
+	// Auto-start camera streamer
+	go startCameraStreamer()
 
 	// Create HTTP server with optimized settings
 	server := &http.Server{

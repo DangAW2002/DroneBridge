@@ -150,7 +150,7 @@ def detect_circles(image, min_circularity=0.65, min_area=8000, max_ellipse_ratio
             'circularity': circularity,
             'type': 'circle'
         })
-        print(f"Detected circle: Center=({cx},{cy}), Radius={radius}, Area={area}, Circularity={circularity:.3f}")
+        # print(f"Detected circle: Center=({cx},{cy}), Radius={radius}, Area={area}, Circularity={circularity:.3f}")
     return circles
 
 
@@ -200,7 +200,7 @@ def recognize_H(test_image, template_contour, threshold=0.5, min_area=100, max_a
         
         
         similarity = min(sim1, sim2)
-        print(similarity)
+        # print(similarity)
         if similarity < threshold and max(sim1, sim2) < threshold * 1.5:
             candidates.append({
                 'bbox': (x, y, w, h),
