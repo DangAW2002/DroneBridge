@@ -8,9 +8,15 @@ import (
 	"time"
 )
 
-const (
+var (
 	SecretFileName = ".drone_secret"
 )
+
+// SetSecretFileName sets the filename used for storing the secret
+// This is used in Test Mode to avoid overwriting the production secret
+func SetSecretFileName(name string) {
+	SecretFileName = name
+}
 
 // DroneSecret represents the stored secret key data
 type DroneSecret struct {
@@ -97,11 +103,11 @@ func SecretExists() bool {
 	if err != nil {
 		return false
 	}
-	
+
 	if _, err := os.Stat(filePath); err == nil {
 		return true
 	}
-	
+
 	// Check current dir as fallback
 	if _, err := os.Stat(SecretFileName); err == nil {
 		return true
@@ -116,13 +122,13 @@ func DeleteSecret() error {
 	if err != nil {
 		return err
 	}
-	
+
 	if err := os.Remove(filePath); err != nil && !os.IsNotExist(err) {
 		return err
 	}
-	
+
 	// Also try current dir
 	os.Remove(SecretFileName)
-	
+
 	return nil
 }

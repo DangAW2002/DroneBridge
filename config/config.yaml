@@ -4,7 +4,7 @@
 log:
   level: "info"                          # Log level: debug, info, warn, error
   verbose: false                         # Enable verbose parsing of server messages (detailed field breakdown)
-  timestamp_format: "time"               # Timestamp format: "time" (human-readable) or "unix" (Unix timestamp)
+  timestamp_format: "unix"               # Timestamp format: "time" (human-readable) or "unix" (Unix timestamp)
 
 # Authentication settings
 # ⚠️ These credentials are from drones_v2 table in database
@@ -26,7 +26,7 @@ auth:
 
 # Network settings (for server connection)
 network:
-  local_listen_port: 14542               # Port to listen for MAVLink from Pixhawk
+  local_listen_port: 14541               # Port to listen for MAVLink from Pixhawk
   target_host: "45.117.171.237"          # Remote server host
   target_port: 14550                     # Remote server port
   protocol: "udp"

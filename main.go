@@ -2,8 +2,11 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"regexp"
 	"syscall"
 	"time"
 
@@ -29,6 +32,9 @@ func main() {
 	overrideUUID := flag.String("uuid", "", "Override Drone UUID")
 	overrideServer := flag.String("server", "", "Override Server Host")
 	overrideServerPort := flag.Int("server-port", 0, "Override Server Port")
+
+	// Test Mode
+	testMode := flag.Bool("test-mode", false, "Enable test mode (uses test_mode/ folder for secrets)")
 
 	flag.Parse()
 
@@ -57,6 +63,23 @@ func main() {
 		logger.Info("🔧 [OVERRIDE] Drone UUID: %s -> %s", cfg.Auth.UUID, *overrideUUID)
 		cfg.Auth.UUID = *overrideUUID
 	}
+
+	// TEST MODE LOGIC
+	if *testMode {
+		logger.Info("🧪 [TEST MODE] ACTIVATED")
+
+		// Ensure test_mode directory exists
+		testDir := "test_mode"
+		if err := os.MkdirAll(testDir, 0755); err != nil {
+			logger.Warn("Failed to create test_mode directory: %v", err)
+		}
+
+		// Use secret file in test_mode folder
+		// e.g. test_mode/.drone_secret_<uuid>
+		customSecretFile := filepath.Join(testDir, fmt.Sprintf(".drone_secret_%s", cfg.Auth.UUID))
+		auth.SetSecretFileName(customSecretFile)
+		logger.Info("🧪 [TEST MODE] Using isolated secret file: %s", customSecretFile)
+	}
 	if *overrideServer != "" {
 		logger.Info("🔧 [OVERRIDE] Auth Host: %s -> %s", cfg.Auth.Host, *overrideServer)
 		cfg.Auth.Host = *overrideServer
@@ -77,6 +100,11 @@ func main() {
 	// Set timestamp format from config
 	if cfg.Log.TimestampFormat != "" {
 		logger.SetTimestampFormat(cfg.Log.TimestampFormat)
+	}
+
+	// VALIDATE UUID FORMAT
+	if !isValidUUID(cfg.Auth.UUID) {
+		logger.Fatal("❌ Invalid Drone UUID format: '%s'. strictly UUID (8-4-4-4-12 hex) required.", cfg.Auth.UUID)
 	}
 
 	logger.Info("Configuration loaded successfully (Log level: %s)", logger.GetLevelString())
@@ -262,4 +290,10 @@ func main() {
 	camera.Cleanup()
 
 	logger.Info("[SHUTDOWN] ✅ Complete")
+}
+
+// isValidUUID checks if the string is a valid UUID
+func isValidUUID(u string) bool {
+	r := regexp.MustCompile("^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$")
+	return r.MatchString(u)
 }
