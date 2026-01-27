@@ -5,13 +5,13 @@ REM Change directory to DroneBridge root (parent of script folder)
 cd /d "%~dp0.."
 
 REM Base configuration
-set "BASE_LISTEN_PORT=14560"
+set "BASE_LISTEN_PORT=14541"
 set "BASE_WEB_PORT=8090"
-set "DRONE_EXEC=DroneBridge.exe"
+set "DRONE_EXEC=build\dronebridge.exe"
 
 REM Check if executable exists
 if not exist "%DRONE_EXEC%" (
-    echo Error: %DRONE_EXEC% not found. Please build the project first.
+    echo Error: %DRONE_EXEC% not found. Please build the project first (e.g., go build -o build\dronebridge.exe .).
     exit /b 1
 )
 

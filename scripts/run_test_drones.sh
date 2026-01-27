@@ -3,13 +3,13 @@
 # Change directory to DroneBridge root
 cd "$(dirname "$0")/.."
 
-BASE_LISTEN_PORT=14560
+BASE_LISTEN_PORT=14541
 BASE_WEB_PORT=8090
-DRONE_EXEC="./DroneBridge"
+DRONE_EXEC="./build/dronebridge"
 
 # Check if executable exists
 if [ ! -f "$DRONE_EXEC" ]; then
-    echo "Error: $DRONE_EXEC not found. Please build the project first."
+    echo "Error: $DRONE_EXEC not found. Please run 'make build' first."
     exit 1
 fi
 
