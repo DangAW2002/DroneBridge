@@ -4,6 +4,17 @@ setlocal enabledelayedexpansion
 REM Change directory to DroneBridge root (parent of script folder)
 cd /d "%~dp0.."
 
+echo Cleaning up old instances...
+taskkill /F /IM dronebridge.exe /T >nul 2>&1
+
+echo Building latest code...
+go build -o build\dronebridge.exe .
+if %ERRORLEVEL% NEQ 0 (
+    echo Build failed. Exiting.
+    pause
+    exit /b 1
+)
+
 REM Base configuration
 set "BASE_LISTEN_PORT=14541"
 set "BASE_WEB_PORT=8090"

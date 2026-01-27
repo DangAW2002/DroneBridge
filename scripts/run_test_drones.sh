@@ -3,7 +3,17 @@
 # Change directory to DroneBridge root
 cd "$(dirname "$0")/.."
 
-BASE_LISTEN_PORT=14541
+echo "Cleaning up old instances..."
+./scripts/stop_test_drones.sh 2>/dev/null || pkill -f dronebridge 2>/dev/null
+
+echo "Building latest code..."
+make build
+if [ $? -ne 0 ]; then
+    echo "Build failed. Exiting."
+    exit 1
+fi
+
+BASE_LISTEN_PORT=14540
 BASE_WEB_PORT=8090
 DRONE_EXEC="./build/dronebridge"
 
