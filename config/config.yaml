@@ -27,6 +27,7 @@ auth:
 # Network settings (for server connection)
 network:
   local_listen_port: 14541               # Port to listen for MAVLink from Pixhawk
+  broadcast_port: 0                      # Port to bind for UDP broadcast (0 = auto/random to avoid conflict)
   target_host: "45.117.171.237"          # Remote server host
   target_port: 14550                     # Remote server port
   protocol: "udp"

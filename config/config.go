@@ -51,6 +51,7 @@ type AuthConfig struct {
 // NetworkConfig contains network settings
 type NetworkConfig struct {
 	LocalListenPort int    `yaml:"local_listen_port"`
+	BroadcastPort   int    `yaml:"broadcast_port"`
 	TargetHost      string `yaml:"target_host"`
 	TargetPort      int    `yaml:"target_port"`
 	Protocol        string `yaml:"protocol"`

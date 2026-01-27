@@ -335,12 +335,14 @@ func NewListener(cfg *config.Config) (*gomavlib.Node, error) {
 
 	// Only add UDP broadcast endpoint if ethernet interface was found
 	if ethErr == nil && localEthIP != "" && broadcastEthIP != "" {
+		// Use configured broadcast port, or 0 (random) if not set
+		broadcastLocalPort := cfg.Network.BroadcastPort
 		endpoints = append(endpoints, gomavlib.EndpointUDPBroadcast{
 			BroadcastAddress: fmt.Sprintf("%s:%d", broadcastEthIP, cfg.Network.LocalListenPort),
-			LocalAddress:     fmt.Sprintf("%s:%d", localEthIP, cfg.Network.LocalListenPort+1),
+			LocalAddress:     fmt.Sprintf("%s:%d", localEthIP, broadcastLocalPort),
 		})
 		logger.Info("[NETWORK] UDP Broadcast enabled on %s: Local=%s:%d, Broadcast=%s:%d",
-			ifaceName, localEthIP, cfg.Network.LocalListenPort+1, broadcastEthIP, cfg.Network.LocalListenPort)
+			ifaceName, localEthIP, broadcastLocalPort, broadcastEthIP, cfg.Network.LocalListenPort)
 	} else {
 		logger.Warn("[NETWORK] UDP Broadcast disabled: %v", ethErr)
 		logger.Info("[NETWORK] Running with UDP Server only on 0.0.0.0:%d", cfg.Network.LocalListenPort)
@@ -395,12 +397,14 @@ func New(cfg *config.Config, authClient *auth.Client, listenerNode *gomavlib.Nod
 
 		// Only add UDP broadcast endpoint if ethernet interface was found
 		if ethErr == nil && localEthIP != "" && broadcastEthIP != "" {
+			// Use configured broadcast port, or 0 (random) if not set
+			broadcastLocalPort := cfg.Network.BroadcastPort
 			endpoints = append(endpoints, gomavlib.EndpointUDPBroadcast{
 				BroadcastAddress: fmt.Sprintf("%s:%d", broadcastEthIP, cfg.Network.LocalListenPort),
-				LocalAddress:     fmt.Sprintf("%s:%d", localEthIP, cfg.Network.LocalListenPort+1),
+				LocalAddress:     fmt.Sprintf("%s:%d", localEthIP, broadcastLocalPort),
 			})
 			logger.Info("[NETWORK] UDP Broadcast enabled on %s: Local=%s:%d, Broadcast=%s:%d",
-				ifaceName, localEthIP, cfg.Network.LocalListenPort+1, broadcastEthIP, cfg.Network.LocalListenPort)
+				ifaceName, localEthIP, broadcastLocalPort, broadcastEthIP, cfg.Network.LocalListenPort)
 		} else {
 			logger.Warn("[NETWORK] UDP Broadcast disabled: %v", ethErr)
 			logger.Info("[NETWORK] Running with UDP Server only on 0.0.0.0:%d", cfg.Network.LocalListenPort)

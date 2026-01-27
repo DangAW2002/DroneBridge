@@ -32,6 +32,7 @@ func main() {
 	overrideUUID := flag.String("uuid", "", "Override Drone UUID")
 	overrideServer := flag.String("server", "", "Override Server Host")
 	overrideServerPort := flag.Int("server-port", 0, "Override Server Port")
+	overrideBroadcastPort := flag.Int("broadcast-port", -1, "Override UDP broadcast bind port (0=random, -1=disabled/auto)")
 
 	// Test Mode
 	testMode := flag.Bool("test-mode", false, "Enable test mode (uses test_mode/ folder for secrets)")
@@ -87,6 +88,10 @@ func main() {
 	if *overrideServerPort > 0 {
 		logger.Info("🔧 [OVERRIDE] Auth Port: %d -> %d", cfg.Auth.Port, *overrideServerPort)
 		cfg.Auth.Port = *overrideServerPort
+	}
+	if *overrideBroadcastPort >= 0 {
+		logger.Info("🔧 [OVERRIDE] Broadcast Port: %d -> %d", cfg.Network.BroadcastPort, *overrideBroadcastPort)
+		cfg.Network.BroadcastPort = *overrideBroadcastPort
 	}
 
 	// Set log level from config or command line
