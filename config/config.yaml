@@ -35,11 +35,11 @@ network:
 # Leave empty for auto-detection, or specify manually
 ethernet:
   interface: ""                          # Interface name: eth0, end0, etc. (empty = auto-detect)
-  local_ip: "10.41.10.1"                 # Local IP to bind (empty = auto-detect from interface)
+  local_ip: ""                 # Local IP to bind (empty = auto-detect from interface)
   broadcast_ip: ""                       # Broadcast IP (empty = auto-calculate from local_ip)
-  pixhawk_ip: "10.41.10.2"               # Pixhawk IP address (for filtering duplicates)
+  pixhawk_ip: ""               # Pixhawk IP address (for filtering duplicates)
   auto_setup: true                       # Auto configure IP on interface if not set
-  subnet: "24"                           # Subnet mask (24 = /24 = 255.255.255.0)
+  subnet: ""                           # Subnet mask (24 = /24 = 255.255.255.0)
   allow_missing_pixhawk: true           # ⚠️ DEBUG ONLY: Allow auth without Pixhawk (for testing without drone)
   pixhawk_connection_timeout: 10         # Timeout in seconds to wait for Pixhawk connection
 
@@ -50,7 +50,7 @@ web:
 
 # Camera streaming settings
 camera:
-  enabled: true                           # Enable/disable camera streaming
+  enabled: false                           # Enable/disable camera streaming
   camera_id: 0                            # Camera device index
   resolution:
     width: 1280                           # Video width

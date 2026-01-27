@@ -22,6 +22,14 @@ func main() {
 	configFile := flag.String("config", "config/config.yaml", "Path to configuration file")
 	logLevel := flag.String("log", "", "Log level: debug, info, warn, error (overrides config)")
 	register := flag.Bool("register", false, "Register this drone with the fleet server")
+
+	// Debug overrides
+	overrideListenPort := flag.Int("listen-port", 0, "Override local UDP listen port")
+	overrideWebPort := flag.Int("web-port", 0, "Override web server port")
+	overrideUUID := flag.String("uuid", "", "Override Drone UUID")
+	overrideServer := flag.String("server", "", "Override Server Host")
+	overrideServerPort := flag.Int("server-port", 0, "Override Server Port")
+
 	flag.Parse()
 
 	// Create logs directory if it doesn't exist
@@ -36,8 +44,31 @@ func main() {
 		logger.Fatal("Failed to load configuration: %v", err)
 	}
 
+	// Apply Command Line Overrides
+	if *overrideListenPort > 0 {
+		logger.Info("🔧 [OVERRIDE] Local Listen Port: %d -> %d", cfg.Network.LocalListenPort, *overrideListenPort)
+		cfg.Network.LocalListenPort = *overrideListenPort
+	}
+	if *overrideWebPort > 0 {
+		logger.Info("🔧 [OVERRIDE] Web Port: %d -> %d", cfg.Web.Port, *overrideWebPort)
+		cfg.Web.Port = *overrideWebPort
+	}
+	if *overrideUUID != "" {
+		logger.Info("🔧 [OVERRIDE] Drone UUID: %s -> %s", cfg.Auth.UUID, *overrideUUID)
+		cfg.Auth.UUID = *overrideUUID
+	}
+	if *overrideServer != "" {
+		logger.Info("🔧 [OVERRIDE] Auth Host: %s -> %s", cfg.Auth.Host, *overrideServer)
+		cfg.Auth.Host = *overrideServer
+	}
+	if *overrideServerPort > 0 {
+		logger.Info("🔧 [OVERRIDE] Auth Port: %d -> %d", cfg.Auth.Port, *overrideServerPort)
+		cfg.Auth.Port = *overrideServerPort
+	}
+
 	// Set log level from config or command line
 	if *logLevel != "" {
+		logger.Info("🔧 [OVERRIDE] Log Level: %s -> %s", cfg.Log.Level, *logLevel)
 		logger.SetLevelFromString(*logLevel)
 	} else {
 		logger.SetLevelFromString(cfg.Log.Level)
