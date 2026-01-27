@@ -34,7 +34,10 @@ run-custom:
 
 # Run in registration mode
 run-register: build
-	@echo "Running in registration mode..."
+	@echo "==================================================\n  Checking Network Connections\n=================================================="
+	@python3 /home/pi/HBQ_server_drone/Module_4G/enable_4g_auto.py || echo "4G setup skipped or failed"
+	@python3 /home/pi/HBQ_server_drone/Module_4G/connection_manager.py once
+	@echo "==================================================\n  Starting DroneBridge in Registration Mode\n=================================================="
 	./$(BINARY_NAME) --register
 
 # Show help

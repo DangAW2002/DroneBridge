@@ -1,0 +1,551 @@
+[2026-01-27 09:46:55] =========================================
+[2026-01-27 09:46:55] Starting 4G Auto Enable
+[2026-01-27 09:46:55] =========================================
+[2026-01-27 09:46:55] Waiting 20 seconds for system to stabilize...
+[2026-01-27 09:47:15] Running enable_4g_auto.py...
+
+==================================================
+  AUTO ENABLE 4G VÀ CẤP PHÁT IP
+==================================================
+
+[1/5] Tìm USB port...
+  ✓ Đã tìm thấy: /dev/ttyUSB2
+  ✓ Đã kết nối serial
+
+[2/5] Kiểm tra module...
+  ✓ AT
+  ✓ Module phản hồi OK
+
+[3/5] Cấu hình mạng...
+  • Tắt Power Saving Mode...
+  ✓ AT+CPSMS=0
+  ✓ AT+CEDRXS=0
+  ✓ AT+CSCLK=0
+  • Cấu hình LTE bands...
+  ✓ AT+CNBP=0x0002000000400183,0x00000000080800C7,0x0000000000000021
+  • Bật RF (AT+CFUN=1)...
+  ✓ AT+CFUN=1
+  • Set Auto mode...
+  ✓ AT+CNMP=2
+  • Auto operator selection...
+  ✓ AT+COPS=0
+  ✓ AT+CREG=2
+  ✓ AT+CEREG=2
+  • Set APN (Viettel v-internet)...
+  ✓ AT+CGDCONT=1,"IP","v-internet"
+  • Attach to PS domain...
+  ✓ AT+CGATT=1
+  • Activate PDP context...
+  ✗ AT+CGACT=1,1: ERROR
+  ✓ Cấu hình hoàn tất
+
+[4/6] Đợi đăng ký mạng (tối đa 60s)...
+  ✓ AT+CREG?
+  ✓ AT+CEREG?
+  ✓ AT+CSQ
+  [ 0s] Signal: 21/31 | 4G  [ 0s] Signal: 21/31 | ✓ Đã đăng ký 4G      
+
+  Thông tin mạng:
+  ✓ AT+COPS?
+    AT+COPS?
++COPS: 0,0,"Viettel Viettel",7
+OK
+
+[5/5] Lấy IP và cấu hình wwan0...
+  • Lấy IP từ PDP context...
+  ✓ AT+CGPADDR=1
+    ✓ IP: 29.75.159.11
+
+[6/6] Cấu hình wwan0 interface...
+  • Switch sang qmi_wwan driver...
+  • Enable raw IP mode...
+  • Bring up wwan0...
+  • Start network qua QMI...
+  ✗ Timeout khi chạy lệnh
+[2026-01-27 09:47:48] ✗ 4G auto enable failed with exit code 1
+[2026-01-27 09:47:48] =========================================
+[2026-01-27 09:47:48] Startup script completed
+[2026-01-27 09:47:48] =========================================
+[2026-01-27 09:50:43] =========================================
+[2026-01-27 09:50:43] Starting 4G Auto Enable
+[2026-01-27 09:50:43] =========================================
+[2026-01-27 09:50:43] Waiting 20 seconds for system to stabilize...
+[2026-01-27 09:51:03] Running enable_4g_auto.py...
+/usr/bin/python3: can't open file '/home/pi/sudo': [Errno 2] No such file or directory
+[2026-01-27 09:51:06] ✗ 4G auto enable failed with exit code 1
+[2026-01-27 09:51:06] =========================================
+[2026-01-27 09:51:06] Startup script completed
+[2026-01-27 09:51:06] =========================================
+[2026-01-27 09:53:01] =========================================
+[2026-01-27 09:53:01] Starting 4G Auto Enable
+[2026-01-27 09:53:01] =========================================
+[2026-01-27 09:53:01] Waiting 20 seconds for system to stabilize...
+[2026-01-27 09:53:21] Running enable_4g_auto.py...
+
+==================================================
+  AUTO ENABLE 4G VÀ CẤP PHÁT IP
+==================================================
+
+[1/5] Tìm USB port...
+  ✓ Đã tìm thấy: /dev/ttyUSB2
+  ✓ Đã kết nối serial
+
+[2/5] Kiểm tra module...
+  ✓ AT
+  ✓ Module phản hồi OK
+
+[3/5] Cấu hình mạng...
+  • Tắt Power Saving Mode...
+  ✓ AT+CPSMS=0
+  ✓ AT+CEDRXS=0
+  ✓ AT+CSCLK=0
+  • Cấu hình LTE bands...
+  ✓ AT+CNBP=0x0002000000400183,0x00000000080800C7,0x0000000000000021
+  • Bật RF (AT+CFUN=1)...
+  ✓ AT+CFUN=1
+  • Set Auto mode...
+  ✓ AT+CNMP=2
+  • Auto operator selection...
+  ✓ AT+COPS=0
+  ✓ AT+CREG=2
+  ✓ AT+CEREG=2
+  • Set APN (Viettel v-internet)...
+  ✓ AT+CGDCONT=1,"IP","v-internet"
+  • Attach to PS domain...
+  ✓ AT+CGATT=1
+  • Activate PDP context...
+  ✓ AT+CGACT=1,1
+  ✓ Cấu hình hoàn tất
+
+[4/6] Đợi đăng ký mạng (tối đa 60s)...
+  ✓ AT+CREG?
+  ✓ AT+CEREG?
+  ✓ AT+CSQ
+  [ 0s] Signal: 23/31 | 4G  [ 0s] Signal: 23/31 | ✓ Đã đăng ký 4G      
+
+  Thông tin mạng:
+  ✓ AT+COPS?
+    AT+COPS?
++COPS: 0,0,"Viettel Viettel",7
+OK
+
+[5/5] Lấy IP và cấu hình wwan0...
+  • Lấy IP từ PDP context...
+  ✓ AT+CGPADDR=1
+    ✓ IP: 214.144.107.182
+
+[6/6] Cấu hình wwan0 interface...
+  • Switch sang qmi_wwan driver...
+Traceback (most recent call last):
+  File "/home/pi/HBQ_server_drone/Module_4G/enable_4g_auto.py", line 349, in <module>
+    success = enable_4g_with_at_commands()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pi/HBQ_server_drone/Module_4G/enable_4g_auto.py", line 217, in enable_4g_with_at_commands
+    time.sleep(2)
+KeyboardInterrupt
+[2026-01-27 09:53:30] ✗ 4G auto enable failed with exit code 1
+[2026-01-27 09:53:30] =========================================
+[2026-01-27 09:53:30] Startup script completed
+[2026-01-27 09:53:30] =========================================
+[2026-01-27 09:54:29] =========================================
+[2026-01-27 09:54:29] Starting 4G Auto Enable
+[2026-01-27 09:54:29] =========================================
+[2026-01-27 09:54:29] Waiting 20 seconds for system to stabilize...
+[2026-01-27 09:54:49] Running enable_4g_auto.py...
+
+==================================================
+  AUTO ENABLE 4G VÀ CẤP PHÁT IP
+==================================================
+
+[1/5] Tìm USB port...
+  ✓ Đã tìm thấy: /dev/ttyUSB2
+  ✓ Đã kết nối serial
+
+[2/5] Kiểm tra module...
+  ✓ AT
+  ✓ Module phản hồi OK
+
+[3/5] Cấu hình mạng...
+  • Tắt Power Saving Mode...
+  ✓ AT+CPSMS=0
+  ✓ AT+CEDRXS=0
+  ✓ AT+CSCLK=0
+  • Cấu hình LTE bands...
+  ✓ AT+CNBP=0x0002000000400183,0x00000000080800C7,0x0000000000000021
+  • Bật RF (AT+CFUN=1)...
+  ✓ AT+CFUN=1
+  • Set Auto mode...
+  ✓ AT+CNMP=2
+  • Auto operator selection...
+  ✓ AT+COPS=0
+  ✓ AT+CREG=2
+  ✓ AT+CEREG=2
+  • Set APN (Viettel v-internet)...
+  ✓ AT+CGDCONT=1,"IP","v-internet"
+  • Attach to PS domain...
+  ✓ AT+CGATT=1
+  • Activate PDP context...
+  ✗ AT+CGACT=1,1: ERROR
+  ✓ Cấu hình hoàn tất
+
+[4/6] Đợi đăng ký mạng (tối đa 60s)...
+  ✓ AT+CREG?
+  ✓ AT+CEREG?
+  ✓ AT+CSQ
+  [ 0s] Signal: 21/31 | 4G  [ 0s] Signal: 21/31 | ✓ Đã đăng ký 4G      
+
+  Thông tin mạng:
+  ✓ AT+COPS?
+    AT+COPS?
++COPS: 0,0,"Viettel Viettel",7
+OK
+
+[5/5] Lấy IP và cấu hình wwan0...
+  • Lấy IP từ PDP context...
+  ✓ AT+CGPADDR=1
+    ✓ IP: 19.126.99.246
+
+[6/6] Cấu hình wwan0 interface...
+  • Switch sang qmi_wwan driver...
+  • Enable raw IP mode...
+  • Bring up wwan0...
+  • Start network qua QMI...
+  ✗ Timeout khi chạy lệnh
+[2026-01-27 09:55:20] ✗ 4G auto enable failed with exit code 1
+[2026-01-27 09:55:21] =========================================
+[2026-01-27 09:55:21] Startup script completed
+[2026-01-27 09:55:21] =========================================
+[2026-01-27 09:59:59] =========================================
+[2026-01-27 09:59:59] Starting 4G Auto Enable
+[2026-01-27 09:59:59] =========================================
+[2026-01-27 09:59:59] Waiting for system to stabilize...
+[2026-01-27 10:00:14] Checking for USB devices...
+[2026-01-27 10:00:14] ✓ USB devices ready after 1s
+[2026-01-27 10:00:19] Running enable_4g_auto.py...
+
+==================================================
+  AUTO ENABLE 4G VÀ CẤP PHÁT IP
+==================================================
+
+[1/5] Tìm USB port...
+  ✓ Đã tìm thấy: /dev/ttyUSB2
+  ✓ Đã kết nối serial
+
+[2/5] Kiểm tra module...
+  ✓ AT
+  ✓ Module phản hồi OK
+
+[3/5] Cấu hình mạng...
+  • Tắt Power Saving Mode...
+  ✓ AT+CPSMS=0
+  ✓ AT+CEDRXS=0
+  ✓ AT+CSCLK=0
+  • Cấu hình LTE bands...
+  ✓ AT+CNBP=0x0002000000400183,0x00000000080800C7,0x0000000000000021
+  • Bật RF (AT+CFUN=1)...
+  ✓ AT+CFUN=1
+  • Set Auto mode...
+  ✓ AT+CNMP=2
+  • Auto operator selection...
+  ✓ AT+COPS=0
+  ✓ AT+CREG=2
+  ✓ AT+CEREG=2
+  • Set APN (Viettel v-internet)...
+  ✓ AT+CGDCONT=1,"IP","v-internet"
+  • Attach to PS domain...
+  ✓ AT+CGATT=1
+  • Activate PDP context...
+  ✗ AT+CGACT=1,1: ERROR
+  ✓ Cấu hình hoàn tất
+
+[4/6] Đợi đăng ký mạng (tối đa 60s)...
+  ✓ AT+CREG?
+  ✓ AT+CEREG?
+  ✓ AT+CSQ
+  [ 0s] Signal: 20/31 | 4G  [ 0s] Signal: 20/31 | ✓ Đã đăng ký 4G      
+
+  Thông tin mạng:
+  ✓ AT+COPS?
+    AT+COPS?
++COPS: 0,0,"Viettel Viettel",7
+OK
+
+[5/5] Lấy IP và cấu hình wwan0...
+  • Lấy IP từ PDP context...
+  ✓ AT+CGPADDR=1
+    ✓ IP: 214.116.125.34
+
+[6/6] Cấu hình wwan0 interface...
+  • Switch sang qmi_wwan driver...
+  • Đợi QMI device sẵn sàng...
+    ✓ /dev/cdc-wdm0 ready (sau 0s)
+  • Enable raw IP mode...
+  • Bring up wwan0...
+  • Start network qua QMI...
+  ✗ Timeout: ['sudo', 'qmicli', '-d', '/dev/cdc-wdm0', '--wds-start-network=apn=v-internet,ip-type=4', '--client-no-release-cid']
+  ! QMI timeout - có thể connection đã active
+  ! Thử tiếp tục với IP đã có...
+
+==================================================
+  HOÀN TẤT - 4G ĐÃ ĐƯỢC BẬT VÀ CẤP IP
+==================================================
+[2026-01-27 10:01:05] ✓ 4G auto enable completed successfully
+[2026-01-27 10:01:05] =========================================
+[2026-01-27 10:01:06] Startup script completed
+[2026-01-27 10:01:06] =========================================
+[2026-01-27 10:04:52] =========================================
+[2026-01-27 10:04:52] Starting 4G Auto Enable
+[2026-01-27 10:04:52] =========================================
+[2026-01-27 10:04:52] Waiting for system to stabilize...
+[2026-01-27 10:05:07] Checking for USB devices...
+[2026-01-27 10:05:07] ✓ USB devices ready after 1s
+[2026-01-27 10:05:12] Running enable_4g_auto.py...
+Cannot find device "wwan0"
+
+==================================================
+  AUTO ENABLE 4G VÀ CẤP PHÁT IP
+==================================================
+
+[1/5] Tìm USB port...
+  ✓ Đã tìm thấy: /dev/ttyUSB2
+  ✓ Đã kết nối serial
+
+[2/5] Kiểm tra module...
+  ✓ AT
+  ✓ Module phản hồi OK
+
+[3/5] Cấu hình mạng...
+  • Tắt Power Saving Mode...
+  ✓ AT+CPSMS=0
+  ✓ AT+CEDRXS=0
+  ✓ AT+CSCLK=0
+  • Cấu hình LTE bands...
+  ✓ AT+CNBP=0x0002000000400183,0x00000000080800C7,0x0000000000000021
+  • Bật RF (AT+CFUN=1)...
+  ✓ AT+CFUN=1
+  • Set Auto mode...
+  ✓ AT+CNMP=2
+  • Auto operator selection...
+  ✓ AT+COPS=0
+  ✓ AT+CREG=2
+  ✓ AT+CEREG=2
+  • Set APN (Viettel v-internet)...
+  ✓ AT+CGDCONT=1,"IP","v-internet"
+  • Attach to PS domain...
+  ✓ AT+CGATT=1
+  • Activate PDP context...
+  ✗ AT+CGACT=1,1: ERROR
+  ✓ Cấu hình hoàn tất
+
+[4/6] Đợi đăng ký mạng (tối đa 60s)...
+  ✓ AT+CREG?
+  ✓ AT+CEREG?
+  ✓ AT+CSQ
+  [ 0s] Signal: 24/31 | 4G  [ 0s] Signal: 24/31 | ✓ Đã đăng ký 4G      
+
+  Thông tin mạng:
+  ✓ AT+COPS?
+    AT+COPS?
++COPS: 0,0,"Viettel Viettel",7
+OK
+
+[5/5] Lấy IP và cấu hình wwan0...
+  • Lấy IP từ PDP context...
+  ✓ AT+CGPADDR=1
+    ✓ IP: 10.95.152.64
+
+[6/6] Cấu hình wwan0 interface...
+  • Switch sang qmi_wwan driver...
+  • Đợi QMI device sẵn sàng...
+    ✗ /dev/cdc-wdm0 không xuất hiện sau 30s
+    → Thử cấu hình IP thủ công...
+  • Enable raw IP mode...
+  • Bring up wwan0...
+  ✗ Lỗi subprocess: Command '['sudo', 'ip', 'link', 'set', 'wwan0', 'up']' returned non-zero exit status 1.
+  ! Thử tiếp tục với cấu hình thủ công...
+
+==================================================
+  HOÀN TẤT - 4G ĐÃ ĐƯỢC BẬT VÀ CẤP IP
+==================================================
+[2026-01-27 10:05:56] ✓ 4G auto enable completed successfully
+[2026-01-27 10:05:56] =========================================
+[2026-01-27 10:05:56] Startup script completed
+[2026-01-27 10:05:57] =========================================
+[2026-01-27 10:06:27] =========================================
+[2026-01-27 10:06:27] Starting 4G Auto Enable
+[2026-01-27 10:06:27] =========================================
+[2026-01-27 10:06:27] Waiting for system to stabilize...
+[2026-01-27 10:06:42] Checking for USB devices...
+[2026-01-27 10:06:42] ✓ USB devices ready after 1s
+[2026-01-27 10:06:47] Running enable_4g_auto.py...
+Cannot find device "wwan0"
+
+==================================================
+  AUTO ENABLE 4G VÀ CẤP PHÁT IP
+==================================================
+
+[1/5] Tìm USB port...
+  ✓ Đã tìm thấy: /dev/ttyUSB2
+  ✓ Đã kết nối serial
+
+[2/5] Kiểm tra module...
+  ✓ AT
+  ✓ Module phản hồi OK
+
+[3/5] Cấu hình mạng...
+  • Tắt Power Saving Mode...
+  ✓ AT+CPSMS=0
+  ✓ AT+CEDRXS=0
+  ✓ AT+CSCLK=0
+  • Cấu hình LTE bands...
+  ✓ AT+CNBP=0x0002000000400183,0x00000000080800C7,0x0000000000000021
+  • Bật RF (AT+CFUN=1)...
+  ✓ AT+CFUN=1
+  • Set Auto mode...
+  ✓ AT+CNMP=2
+  • Auto operator selection...
+  ✓ AT+COPS=0
+  ✓ AT+CREG=2
+  ✓ AT+CEREG=2
+  • Set APN (Viettel v-internet)...
+  ✓ AT+CGDCONT=1,"IP","v-internet"
+  • Attach to PS domain...
+  ✓ AT+CGATT=1
+  • Activate PDP context...
+  ✗ AT+CGACT=1,1: ERROR
+  ✓ Cấu hình hoàn tất
+
+[4/6] Đợi đăng ký mạng (tối đa 60s)...
+  ✓ AT+CREG?
+  ✓ AT+CEREG?
+  ✓ AT+CSQ
+  [ 0s] Signal: 22/31 | 4G  [ 0s] Signal: 22/31 | ✓ Đã đăng ký 4G      
+
+  Thông tin mạng:
+  ✓ AT+COPS?
+    AT+COPS?
++COPS: 0,0,"Viettel Viettel",7
+OK
+
+[5/5] Lấy IP và cấu hình wwan0...
+  • Lấy IP từ PDP context...
+  ✓ AT+CGPADDR=1
+    ✓ IP: 10.95.152.64
+
+[6/6] Cấu hình wwan0 interface...
+  • Switch sang qmi_wwan driver...
+  • Đợi QMI device sẵn sàng...
+    ✗ /dev/cdc-wdm0 không xuất hiện sau 30s
+    → Thử cấu hình IP thủ công...
+  • Enable raw IP mode...
+  • Bring up wwan0...
+  ✗ Lỗi subprocess: Command '['sudo', 'ip', 'link', 'set', 'wwan0', 'up']' returned non-zero exit status 1.
+  ! Thử tiếp tục với cấu hình thủ công...
+
+==================================================
+  HOÀN TẤT - 4G ĐÃ ĐƯỢC BẬT VÀ CẤP IP
+==================================================
+[2026-01-27 10:07:27] ✓ 4G auto enable completed successfully
+[2026-01-27 10:07:27] =========================================
+[2026-01-27 10:07:27] Startup script completed
+[2026-01-27 10:07:27] =========================================
+[2026-01-27 10:15:50] =========================================
+[2026-01-27 10:15:50] Starting 4G Auto Enable
+[2026-01-27 10:15:50] =========================================
+[2026-01-27 10:15:50] Waiting for system to stabilize...
+[2026-01-27 10:16:05] Checking for USB devices...
+[2026-01-27 10:16:05] ✓ USB devices ready after 1s
+[2026-01-27 10:16:10] Running enable_4g_auto.py...
+
+==================================================
+  AUTO ENABLE 4G VÀ CẤP PHÁT IP
+==================================================
+
+[1/5] Tìm USB port...
+  ✓ Đã tìm thấy: /dev/ttyUSB2
+  ✓ Đã kết nối serial
+
+[2/5] Kiểm tra module...
+  ✓ AT
+  ✓ Module phản hồi OK
+
+[3/5] Cấu hình mạng...
+  • Tắt Power Saving Mode...
+  ✓ AT+CPSMS=0
+  ✓ AT+CEDRXS=0
+  ✓ AT+CSCLK=0
+  • Cấu hình LTE bands...
+  ✓ AT+CNBP=0x0002000000400183,0x00000000080800C7,0x0000000000000021
+  • Bật RF (AT+CFUN=1)...
+  ✓ AT+CFUN=1
+  • Set Auto mode...
+  ✓ AT+CNMP=2
+  • Auto operator selection...
+  ✓ AT+COPS=0
+  ✓ AT+CREG=2
+  ✓ AT+CEREG=2
+  • Set APN (Viettel v-internet)...
+  ✓ AT+CGDCONT=1,"IP","v-internet"
+  • Attach to PS domain...
+  ✓ AT+CGATT=1
+  • Activate PDP context...
+  ✗ AT+CGACT=1,1: ERROR
+  ✓ Cấu hình hoàn tất
+
+[4/6] Đợi đăng ký mạng (tối đa 60s)...
+  ✓ AT+CREG?
+  ✓ AT+CEREG?
+  ✓ AT+CSQ
+  [ 0s] Signal: 20/31 | 4G  [ 0s] Signal: 20/31 | ✓ Đã đăng ký 4G      
+
+  Thông tin mạng:
+  ✓ AT+COPS?
+    AT+COPS?
++COPS: 0,0,"Viettel Viettel",7
+OK
+
+[5/5] Lấy IP và cấu hình wwan0...
+  • Lấy IP từ PDP context...
+  ✓ AT+CGPADDR=1
+    ✓ IP: 29.78.184.88
+
+[6/6] Cấu hình wwan0 interface...
+  • Switch sang qmi_wwan driver...
+  • Kiểm tra wwan0 interface...
+    ✓ wwan0 interface available
+  • Đợi QMI device sẵn sàng...
+    ✓ /dev/cdc-wdm0 ready (sau 0s)
+  • Enable raw IP mode...
+  • Bring up wwan0...
+  • Skip QMI start network (PDP đã active qua AT commands)
+    IP đã có: 29.78.184.88
+  • Skip QMI settings query (sử dụng IP từ AT commands)
+    IP: 29.78.184.88
+  • Set IP 29.78.184.88...
+  • KHÔNG set default route (giữ nguyên mạng hiện tại)
+    → SSH và mạng hiện tại vẫn hoạt động bình thường
+    → Muốn route tất cả traffic qua 4G:
+      sudo ip route add default dev wwan0 metric 200
+  ✓ Cấu hình interface hoàn tất
+
+  Interface wwan0:
+    wwan0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+            inet 29.78.184.88  netmask 255.255.255.255  broadcast 0.0.0.0
+            ether ba:8d:9d:7f:c7:76  txqueuelen 1000  (Ethernet)
+            RX packets 0  bytes 0 (0.0 B)
+            RX errors 0  dropped 0  overruns 0  frame 0
+            TX packets 30  bytes 5502 (5.3 KiB)
+            TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+  • Test kết nối 4G...
+  ✓ 4G internet OK!
+    2 packets transmitted, 2 received, 0% packet loss, time 999ms
+    rtt min/avg/max/mdev = 31.880/34.994/38.109/3.114 ms
+
+==================================================
+  HOÀN TẤT - 4G ĐÃ ĐƯỢC BẬT VÀ CẤP IP
+==================================================
+[2026-01-27 10:16:30] ✓ 4G auto enable completed successfully
+[2026-01-27 10:16:30] =========================================
+[2026-01-27 10:16:30] Startup script completed
+[2026-01-27 10:16:30] =========================================

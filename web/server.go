@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -28,6 +29,9 @@ var staticFiles embed.FS
 // XML content cache for parameter editor
 var xmlContent []byte
 var xmlOnce sync.Once
+
+// Mutex to prevent concurrent 4G module access
+var moduleMutex sync.Mutex
 
 // ParamSetRequest represents a request to set a parameter
 type ParamSetRequest struct {
@@ -1155,7 +1159,7 @@ func StartServer(port int, authClient *auth.Client, droneUUID string) {
 		}
 
 		// Read connection status file
-		statusFile := "/tmp/connection_status.json"
+		statusFile := "/home/pi/HBQ_server_drone/data/connection_status.json"
 		statusData, err := os.ReadFile(statusFile)
 		
 		var networkInfo map[string]interface{}
@@ -1175,6 +1179,14 @@ func StartServer(port int, authClient *auth.Client, droneUUID string) {
 
 	// Return network status directly (not wrapped)
 	json.NewEncoder(w).Encode(networkInfo)
+	})
+
+	// API endpoint to set/get network priority
+	http.HandleFunc("/api/network/priority", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		setCORSHeaders(w)
+
+		if r.Method == http.MethodOptions {
 			return
 		}
 
@@ -1271,6 +1283,158 @@ func StartServer(port int, authClient *auth.Client, droneUUID string) {
 			"success": true,
 			"message": "Reconnection triggered",
 		})
+	})
+
+	// API endpoint to get current 4G mode
+	http.HandleFunc("/api/network/4g/mode", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-cache")
+		setCORSHeaders(w)
+
+		if r.Method == http.MethodOptions {
+			return
+		}
+
+		if r.Method != http.MethodGet {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": false,
+				"message": "Method not allowed",
+			})
+			return
+		}
+
+		// Lock to prevent concurrent module access
+		moduleMutex.Lock()
+		defer moduleMutex.Unlock()
+
+		// Get current mode using Python script
+		cmd := exec.Command("python3", "/home/pi/HBQ_server_drone/Module_4G/set_4g_mode.py", "get")
+		output, err := cmd.Output() // Only capture stdout, not stderr
+		
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": false,
+				"message": "Failed to get 4G mode",
+			})
+			return
+		}
+
+		// Parse JSON output from Python script
+		var result map[string]interface{}
+		if err := json.Unmarshal(output, &result); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": false,
+				"message": "Failed to parse mode data",
+			})
+			return
+		}
+
+		// Return the result
+		json.NewEncoder(w).Encode(result)
+	})
+
+	// API endpoint to set 4G mode
+	http.HandleFunc("/api/network/4g/mode/set", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-cache")
+		setCORSHeaders(w)
+
+		if r.Method == http.MethodOptions {
+			return
+		}
+
+		if r.Method != http.MethodPost {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": false,
+				"message": "Method not allowed",
+			})
+			return
+		}
+
+		// Parse request body
+		var req map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": false,
+				"message": "Invalid JSON",
+			})
+			return
+		}
+
+		// Get mode from request
+		modeVal, ok := req["mode"]
+		if !ok {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": false,
+				"message": "Mode parameter required",
+			})
+			return
+		}
+
+		// Convert mode to string for Python script
+		var modeStr string
+		switch v := modeVal.(type) {
+		case float64:
+			modeStr = fmt.Sprintf("%d", int(v))
+		case int:
+			modeStr = fmt.Sprintf("%d", v)
+		case string:
+			// Try to parse string as number
+			if num, err := strconv.Atoi(v); err == nil {
+				modeStr = fmt.Sprintf("%d", num)
+			} else {
+				// Invalid string (like "auto", "4G", etc)
+				log.Printf("Invalid mode string received: %s", v)
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"success": false,
+					"message": fmt.Sprintf("Invalid mode: %s. Use numeric values: 2, 13, 14, 38, 51, 71", v),
+				})
+				return
+			}
+		default:
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": false,
+				"message": "Invalid mode type",
+			})
+			return
+		}
+
+		// Lock to prevent concurrent module access
+		moduleMutex.Lock()
+		defer moduleMutex.Unlock()
+
+		// Set mode using Python script
+		cmd := exec.Command("python3", "/home/pi/HBQ_server_drone/Module_4G/set_4g_mode.py", "set", modeStr)
+		output, err := cmd.Output() // Only capture stdout, not stderr
+		
+		if err != nil {
+			log.Printf("Failed to set 4G mode: %v", err)
+		}
+
+		// Parse JSON output from Python script
+		var result map[string]interface{}
+		if err := json.Unmarshal(output, &result); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": false,
+				"message": "Failed to parse response from module",
+			})
+			return
+		}
+
+		// Return the result with appropriate status code
+		if success, ok := result["success"].(bool); ok && !success {
+			w.WriteHeader(http.StatusBadRequest)
+		}
+		json.NewEncoder(w).Encode(result)
 	})
 
 	// Auto-start camera streamer

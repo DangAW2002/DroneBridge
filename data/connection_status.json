@@ -1,0 +1,17 @@
+{
+  "4g": {
+    "status": "available",
+    "ip": "19.168.204.157",
+    "operator": "Viettel"
+  },
+  "wifi": {
+    "status": "connected",
+    "ip": "192.168.137.199",
+    "gateway": "192.168.137.1"
+  },
+  "ethernet": {
+    "status": "unavailable"
+  },
+  "active_interface": "wwan0",
+  "timestamp": 1769506325
+}

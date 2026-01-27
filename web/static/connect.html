@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Connection Settings - DroneBridge</title>
+    <!-- Version: 2026-01-27-16:45 -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -500,10 +504,11 @@
                     <div class="setting-desc">Chọn băng tần cho module 4G (Auto: tự động 2G/3G/4G)</div>
                 </div>
                 <select class="btn btn-secondary" id="fourGMode" onchange="set4GMode()">
-                    <option value="auto" selected>Auto (2G/3G/4G)</option>
-                    <option value="4G">4G Only</option>
-                    <option value="3G">3G Only</option>
-                    <option value="2G">2G Only</option>
+                    <option value="2" selected>Auto (2G/3G/4G)</option>
+                    <option value="38">4G Only</option>
+                    <option value="14">3G Only</option>
+                    <option value="13">2G Only</option>
+                    <option value="71">2G/3G/4G</option>
                 </select>
             </div>
 
@@ -546,6 +551,15 @@
         let currentPriority = 'wifi';
         let autoSwitch = true;
         let autoReconnect = true;
+        
+        // Cache để tránh nhảy UI
+        let lastNetworkState = {
+            activeInterface: null,
+            wifiSSID: null,
+            fourGOperator: null,
+            wifiIP: null,
+            fourGIP: null
+        };
 
         // Load settings on page load
         window.onload = function() {
@@ -655,25 +669,112 @@
         }
 
         function updateConnectionStatus() {
-            // Get real network info from CM5
-            fetch('/api/network/info')
+            // Get real network status from server
+            fetch('/api/network/status')
                 .then(response => response.json())
-                .then(netInfo => {
-                    // Update current carrier/network info
-                    updateCarrierInfo(netInfo);
+                .then(data => {
+                    // Clear any error logs on successful fetch
+                    // (keep functionality as-is)
                     
-                    // Update active connection display
-                    const activeConn = document.getElementById('activeConnection');
-                    activeConn.textContent = netInfo.type || 'Unknown';
+                    // Determine active interface
+                    let activeInterface = data.active_interface;
+                    
+                    // WiFi info
+                    let wifiConnected = data.wifi && (data.wifi.status === 'connected' || data.wifi.status === 'available');
+                    let wifiIP = wifiConnected ? (data.wifi.ip || data.wifi.ip_address || 'N/A') : null;
+                    
+                    // 4G info
+                    let fourGConnected = data['4g'] && (data['4g'].status === 'connected' || data['4g'].status === 'available');
+                    let fourGIP = fourGConnected ? (data['4g'].ip || data['4g'].ip_address || 'N/A') : null;
+                    
+                    // Update WiFi display
+                    if (wifiConnected) {
+                        updateSignalBars('wifiSignal', 4); // Default 4/5 bars when connected
+                        const wifiLabel = data.wifi.ssid || 'WiFi Network';
+                        document.getElementById('wifiSpeed').textContent = `IP: ${wifiIP}`;
+                    } else {
+                        updateSignalBars('wifiSignal', 0);
+                        document.getElementById('wifiSpeed').textContent = 'Disconnected';
+                    }
+                    
+                    // Update 4G display
+                    if (fourGConnected) {
+                        updateSignalBars('fourGSignal', 3); // Default 3/5 bars when connected
+                        document.getElementById('fourGSpeed').textContent = `IP: ${fourGIP}`;
+                    } else {
+                        updateSignalBars('fourGSignal', 0);
+                        document.getElementById('fourGSpeed').textContent = 'Disconnected';
+                    }
+                    
+                    // Chỉ update carrier info nếu có thay đổi thực sự
+                    const newActiveInterface = activeInterface || (wifiConnected ? 'wifi' : (fourGConnected ? 'wwan0' : null));
+                    
+                    if (newActiveInterface !== lastNetworkState.activeInterface || 
+                        wifiIP !== lastNetworkState.wifiIP || 
+                        fourGIP !== lastNetworkState.fourGIP) {
+                        
+                        // Update cache
+                        lastNetworkState.activeInterface = newActiveInterface;
+                        lastNetworkState.wifiIP = wifiIP;
+                        lastNetworkState.fourGIP = fourGIP;
+                        
+                        // Update Active Connection card
+                        if (newActiveInterface === 'wwan0' || newActiveInterface === '4g') {
+                            document.getElementById('activeConnection').textContent = '4G/LTE';
+                            document.getElementById('activeConnection').style.color = 'var(--accent-yellow)';
+                            
+                            const carrierEl = document.getElementById('currentCarrier');
+                            const detailsEl = document.getElementById('carrierDetails');
+                            
+                            // Lấy operator từ AT commands nếu có
+                            const operator = data['4g']?.operator || lastNetworkState.fourGOperator || 'Mobile Network';
+                            lastNetworkState.fourGOperator = operator;
+                            
+                            carrierEl.innerHTML = `📱 ${operator}`;
+                            carrierEl.style.color = 'var(--accent-yellow)';
+                            detailsEl.textContent = `Type: 4G/LTE | IP: ${fourGIP}`;
+                        } else if (wifiConnected && (newActiveInterface === 'wlan0' || newActiveInterface === 'wifi' || !fourGConnected)) {
+                            document.getElementById('activeConnection').textContent = 'WiFi';
+                            document.getElementById('activeConnection').style.color = 'var(--accent-green)';
+                            
+                            const carrierEl = document.getElementById('currentCarrier');
+                            const detailsEl = document.getElementById('carrierDetails');
+                            
+                            const ssid = data.wifi?.ssid || lastNetworkState.wifiSSID || 'WiFi Network';
+                            lastNetworkState.wifiSSID = ssid;
+                            
+                            carrierEl.innerHTML = `📶 ${ssid}`;
+                            carrierEl.style.color = 'var(--accent-green)';
+                            detailsEl.textContent = `Type: WiFi | IP: ${wifiIP}`;
+                        } else if (data.ethernet && data.ethernet.status === 'connected') {
+                            document.getElementById('activeConnection').textContent = 'Ethernet';
+                            document.getElementById('activeConnection').style.color = 'var(--accent-cyan)';
+                            
+                            const carrierEl = document.getElementById('currentCarrier');
+                            const detailsEl = document.getElementById('carrierDetails');
+                            carrierEl.innerHTML = `🔌 Wired Connection`;
+                            carrierEl.style.color = 'var(--accent-cyan)';
+                            detailsEl.textContent = `Type: Ethernet | IP: ${data.ethernet.ip || 'N/A'}`;
+                        } else {
+                            document.getElementById('activeConnection').textContent = 'None';
+                            document.getElementById('activeConnection').style.color = 'var(--accent-red)';
+                            
+                            const carrierEl = document.getElementById('currentCarrier');
+                            const detailsEl = document.getElementById('carrierDetails');
+                            carrierEl.innerHTML = `⚠️ No Connection`;
+                            carrierEl.style.color = 'var(--accent-red)';
+                            detailsEl.textContent = 'Not connected to any network';
+                        }
+                    }
                     
                     // Update server connection status
                     fetch('/api/status')
                         .then(response => response.json())
-                        .then(data => {
+                        .then(statusData => {
                             const serverSignal = document.getElementById('serverSignal');
                             const serverStatus = document.getElementById('serverStatus');
                             
-                            if (data.auth_status === 'Authenticated') {
+                            if (statusData.auth_status === 'Authenticated') {
                                 serverSignal.style.color = 'var(--accent-green)';
                                 serverSignal.textContent = '●';
                                 serverStatus.textContent = 'Connected - Real-time';
@@ -682,46 +783,14 @@
                                 serverSignal.textContent = '●';
                                 serverStatus.textContent = 'Disconnected';
                             }
+                        })
+                        .catch(err => {
+                            // Không log error nữa, giữ im lặng
                         });
-                    
-                    // Update network-specific info based on actual interface
-                    if (netInfo.type === 'WiFi') {
-                        // Convert quality to signal bars (0-5)
-                        const signalBars = Math.min(5, Math.max(1, Math.ceil(netInfo.quality / 20)));
-                        updateSignalBars('wifiSignal', signalBars);
-                        document.getElementById('wifiSpeed').textContent = `Speed: ${netInfo.speed}`;
-                        
-                        // Show 4G as inactive
-                        updateSignalBars('fourGSignal', 0);
-                        document.getElementById('fourGSpeed').textContent = 'Inactive';
-                    } else if (netInfo.type === '4G/LTE') {
-                        // Show WiFi as inactive
-                        updateSignalBars('wifiSignal', 0);
-                        document.getElementById('wifiSpeed').textContent = 'Inactive';
-                        
-                        // Convert quality to signal bars (0-5)
-                        const signalBars = Math.min(5, Math.max(1, Math.ceil(netInfo.quality / 20)));
-                        updateSignalBars('fourGSignal', signalBars);
-                        document.getElementById('fourGSpeed').textContent = `Speed: ${netInfo.speed}`;
-                    } else if (netInfo.type === 'Ethernet') {
-                        // Show Ethernet info
-                        updateSignalBars('wifiSignal', 5);
-                        document.getElementById('wifiSpeed').textContent = `Speed: ${netInfo.speed}`;
-                        updateSignalBars('fourGSignal', 0);
-                        document.getElementById('fourGSpeed').textContent = 'N/A';
-                    } else {
-                        // Unknown/No connection
-                        updateSignalBars('wifiSignal', 0);
-                        updateSignalBars('fourGSignal', 0);
-                        document.getElementById('wifiSpeed').textContent = 'N/A';
-                        document.getElementById('fourGSpeed').textContent = 'N/A';
-                    }
                 })
                 .catch(err => {
-                    console.log('Network status update error:', err);
-                    addLog('Error fetching network status');
-                    // Show mock data when no server
-                    updateCarrierInfoMock();
+                    // Giữ nguyên giá trị cũ, chỉ log vào console
+                    console.log('Network status fetch error (retrying...):', err);
                 });
         }
 
@@ -730,69 +799,6 @@
             bars.forEach((bar, index) => {
                 bar.classList.toggle('active', index < strength);
             });
-        }
-
-        function updateCarrierInfo(netInfo) {
-            const carrierEl = document.getElementById('currentCarrier');
-            const detailsEl = document.getElementById('carrierDetails');
-            
-            if (netInfo) {
-                // Determine connection type
-                let connectionType = 'Unknown';
-                let carrierName = 'N/A';
-                let connectionIcon = '📡';
-                
-                // Check WiFi
-                if (netInfo.wifi_connected) {
-                    connectionType = 'WiFi';
-                    carrierName = netInfo.wifi_ssid || 'WiFi Network';
-                    connectionIcon = '📶';
-                    carrierEl.style.color = 'var(--accent-green)';
-                }
-                // Check 4G/LTE
-                else if (netInfo.modem_connected) {
-                    connectionType = '4G/LTE';
-                    carrierName = netInfo.carrier_name || netInfo.operator || 'Mobile Network';
-                    connectionIcon = '📱';
-                    carrierEl.style.color = 'var(--accent-yellow)';
-                }
-                // Check Ethernet
-                else if (netInfo.ethernet_connected) {
-                    connectionType = 'Ethernet';
-                    carrierName = 'Wired Connection';
-                    connectionIcon = '🔌';
-                    carrierEl.style.color = 'var(--accent-cyan)';
-                }
-                
-                // Update display
-                carrierEl.innerHTML = `${connectionIcon} ${carrierName}`;
-                detailsEl.textContent = `Type: ${connectionType} | IP: ${netInfo.ip_address || 'N/A'}`;
-                
-                // Update active connection indicator
-                document.getElementById('activeConnection').textContent = connectionType;
-            }
-        }
-
-        function updateCarrierInfoMock() {
-            // Mock data when server is not available
-            const carrierEl = document.getElementById('currentCarrier');
-            const detailsEl = document.getElementById('carrierDetails');
-            
-            // Simulate detection
-            const mockCarriers = [
-                { icon: '📶', name: 'WiFi Home', type: 'WiFi', ip: '192.168.1.100' },
-                { icon: '📱', name: 'Viettel 4G', type: '4G/LTE', ip: '10.x.x.x' },
-                { icon: '📱', name: 'Vinaphone', type: '4G/LTE', ip: '10.x.x.x' },
-                { icon: '📱', name: 'Mobifone', type: '4G/LTE', ip: '10.x.x.x' }
-            ];
-            
-            const mock = mockCarriers[Math.floor(Math.random() * mockCarriers.length)];
-            
-            carrierEl.innerHTML = `${mock.icon} ${mock.name}`;
-            detailsEl.textContent = `Type: ${mock.type} | IP: ${mock.ip}`;
-            document.getElementById('activeConnection').textContent = mock.type;
-            
-            carrierEl.style.color = mock.type === 'WiFi' ? 'var(--accent-green)' : 'var(--accent-yellow)';
         }
 
         function addLog(message) {
@@ -816,9 +822,9 @@
             fetch('/api/network/4g/mode')
                 .then(response => response.json())
                 .then(data => {
-                    if (data.success) {
-                        document.getElementById('fourGMode').value = data.current_mode;
-                        addLog(`4G mode: ${data.current_mode}`);
+                    if (data.success && data.mode) {
+                        document.getElementById('fourGMode').value = data.mode.toString();
+                        addLog(`4G mode: ${data.mode_name || data.mode}`);
                     }
                 })
                 .catch(err => {
@@ -828,27 +834,37 @@
 
         function set4GMode() {
             const mode = document.getElementById('fourGMode').value;
-            addLog(`Setting 4G mode to ${mode}...`);
-            showNotification(`⏳ Setting 4G mode to ${mode}...`);
+            const modeNames = {
+                '2': 'Auto',
+                '13': '2G Only',
+                '14': '3G Only',
+                '38': '4G Only',
+                '71': '2G/3G/4G'
+            };
+            const modeName = modeNames[mode] || mode;
+            
+            addLog(`Setting 4G mode to ${modeName}...`);
+            showNotification(`⏳ Setting 4G mode to ${modeName}...`);
 
             fetch('/api/network/4g/mode/set', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ mode: mode })
+                body: JSON.stringify({ mode: parseInt(mode) })
             })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        showNotification(`✓ 4G mode set to ${mode}`);
-                        addLog(`4G mode changed to ${mode} successfully`);
+                        const displayName = data.mode_name || modeName;
+                        showNotification(`✓ ${data.message || 'Mode changed successfully'}`);
+                        addLog(`4G mode changed to ${displayName}`);
                         // Reload status after 2 seconds
                         setTimeout(() => {
                             updateConnectionStatus();
                         }, 2000);
                     } else {
-                        showNotification(`✗ Failed to set 4G mode: ${data.message}`, true);
+                        showNotification(`✗ ${data.message || 'Failed to set mode'}`, true);
                         addLog(`Error: ${data.message}`);
                     }
                 })
