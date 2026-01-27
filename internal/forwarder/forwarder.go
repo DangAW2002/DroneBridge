@@ -368,7 +368,23 @@ func DiscoverPixhawk(cfg *config.Config, timeout time.Duration) (string, uint8, 
 		case event := <-eventCh:
 			if frame, ok := event.(*gomavlib.EventFrame); ok {
 				if _, ok := frame.Message().(*common.MessageHeartbeat); ok {
-					remoteAddr := frame.Channel.Endpoint().RemoteAddr().String()
+					// In gomavlib v3, the Channel string usually contains the remote address
+					// e.g. "udp:10.41.10.2:14550"
+					chanStr := frame.Channel.String()
+					remoteAddr := chanStr
+
+					// If it's a UDP channel, it usually looks like "udp:remote_ip:port" or "udp:remote_ip:port (local_ip:port)"
+					// We'll try to extract the IP part
+					parts := strings.Split(chanStr, ":")
+					if len(parts) >= 3 && parts[0] == "udp" {
+						// remoteAddr is the part after "udp:"
+						remoteAddr = strings.Join(parts[1:3], ":")
+						// Trim any local address info in parentheses if it exists
+						if idx := strings.Index(remoteAddr, " "); idx != -1 {
+							remoteAddr = remoteAddr[:idx]
+						}
+					}
+
 					// Extract IP from host:port
 					ip, _, _ := net.SplitHostPort(remoteAddr)
 					if ip == "" {
@@ -376,7 +392,7 @@ func DiscoverPixhawk(cfg *config.Config, timeout time.Duration) (string, uint8, 
 					}
 
 					sysID := frame.SystemID()
-					logger.Info("[DISCOVERY] ✅ Found Pixhawk at %s (System ID: %d)", ip, sysID)
+					logger.Info("[DISCOVERY] ✅ Found Pixhawk at %s (System ID: %d) from channel: %s", ip, sysID, chanStr)
 					return ip, sysID, nil
 				}
 			}
