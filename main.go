@@ -144,9 +144,27 @@ func main() {
 	logger.Info("Listening on port %d, forwarding to %s",
 		cfg.Network.LocalListenPort, cfg.GetAddress())
 
-	// STEP 0: Create listener node ONLY (to listen for Pixhawk, no sender yet)
-	logger.Info("[STARTUP] Creating MAVLink listener for Pixhawk...")
-	listenerNode, err := forwarder.NewListener(cfg)
+	// STEP 0: Discover Pixhawk (Transient Phase)
+	logger.Info("[STARTUP] ⏳ Entering Discovery Phase...")
+	discoveredIP, discoveredSysID, discErr := forwarder.DiscoverPixhawk(cfg, time.Duration(cfg.Ethernet.PixhawkConnectionTimeout)*time.Second)
+
+	var listenerNode *gomavlib.Node
+	if discErr == nil {
+		logger.Info("[STARTUP] ✅ Pixhawk discovered at %s (System ID: %d)", discoveredIP, discoveredSysID)
+		// Register found SysID with web bridge early
+		web.HandleHeartbeat(discoveredSysID)
+
+		// Create CLEAN Unicast listener
+		listenerNode, err = forwarder.NewListener(cfg, discoveredIP)
+	} else {
+		if cfg.Ethernet.AllowMissingPixhawk {
+			logger.Warn("[STARTUP] ⚠️  Discovery failed (%v), but AllowMissingPixhawk=true, continuing with Broadcast fallback...", discErr)
+			listenerNode, err = forwarder.NewListener(cfg, "")
+		} else {
+			logger.Fatal("[STARTUP] ❌ Pixhawk discovery failed: %v. Set 'allow_missing_pixhawk: true' to skip.", discErr)
+		}
+	}
+
 	if err != nil {
 		logger.Fatal("Failed to create listener: %v", err)
 	}
@@ -154,50 +172,40 @@ func main() {
 	// Initialize MAVLink bridge EARLY with listener node (for web access)
 	web.InitMAVLinkBridge(listenerNode)
 
-	// STEP 1: Wait for Pixhawk connection by starting a minimal forwarder loop
-	// This just listens and captures System ID from heartbeat
-	logger.Info("[STARTUP] ⏳ Waiting for Pixhawk heartbeat... (timeout: %ds)", cfg.Ethernet.PixhawkConnectionTimeout)
-	pixhawkSysID := uint8(0)
-	pixhawkConnected := false
-	pixhawkReadyCh := make(chan struct{}) // Channel to signal when done (connected or timeout)
+	// Since we either discovered it or we are in fallback, we proceed.
+	// If it was discovered, the listenerNode is already connected via Unicast.
+	// If discovery failed but we allowed it, we are using Broadcast fallback.
+	pixhawkConnected := (discErr == nil)
+	pixhawkSysID := discoveredSysID
 
-	// Start listening on the listener node
-	go func() {
-		eventCh := listenerNode.Events()
-		timeout := time.NewTimer(time.Duration(cfg.Ethernet.PixhawkConnectionTimeout) * time.Second)
-		defer timeout.Stop()
+	if !pixhawkConnected && cfg.Ethernet.AllowMissingPixhawk {
+		// We need to wait for a heartbeat if we fell back to broadcast
+		logger.Info("[STARTUP] ⏳ Waiting for Pixhawk heartbeat via Broadcast fallback...")
+		pixhawkReadyCh := make(chan struct{})
 
-		for {
-			select {
-			case <-timeout.C:
-				pixhawkReadyCh <- struct{}{} // Signal timeout
-				return
-			case event := <-eventCh:
-				if frame, ok := event.(*gomavlib.EventFrame); ok {
-					pixhawkSysID = frame.SystemID()
-					pixhawkConnected = true
-					logger.Info("[PIXHAWK_CONNECTED] ✅ First heartbeat received from Pixhawk (SysID: %d)", pixhawkSysID)
-					web.HandleHeartbeat(pixhawkSysID)
-					pixhawkReadyCh <- struct{}{} // Signal connected immediately
+		go func() {
+			eventCh := listenerNode.Events()
+			timeout := time.NewTimer(10 * time.Second) // Small additional timeout
+			defer timeout.Stop()
+
+			for {
+				select {
+				case <-timeout.C:
+					pixhawkReadyCh <- struct{}{}
 					return
+				case event := <-eventCh:
+					if frame, ok := event.(*gomavlib.EventFrame); ok {
+						pixhawkSysID = frame.SystemID()
+						pixhawkConnected = true
+						logger.Info("[PIXHAWK_CONNECTED] ✅ Received heartbeat via fallback (SysID: %d)", pixhawkSysID)
+						web.HandleHeartbeat(pixhawkSysID)
+						pixhawkReadyCh <- struct{}{}
+						return
+					}
 				}
 			}
-		}
-	}()
-
-	// Wait for signal (either connected or timeout)
-	<-pixhawkReadyCh
-
-	if pixhawkConnected {
-		logger.Info("[STARTUP] ✅ Pixhawk connected successfully!")
-		logger.Info("[STARTUP] Pixhawk System ID: %d", pixhawkSysID)
-	} else {
-		if cfg.Ethernet.AllowMissingPixhawk {
-			logger.Warn("[STARTUP] ⚠️  Pixhawk connection timeout, but AllowMissingPixhawk=true, continuing...")
-			logger.Warn("[STARTUP] ⚠️  Running in DEBUG mode without actual Pixhawk connection!")
-		} else {
-			logger.Fatal("[STARTUP] ❌ Pixhawk connection failed. Set 'allow_missing_pixhawk: true' in config to skip this requirement.")
-		}
+		}()
+		<-pixhawkReadyCh
 	}
 
 	// STEP 2: Now create full forwarder (with sender node using correct SysID)

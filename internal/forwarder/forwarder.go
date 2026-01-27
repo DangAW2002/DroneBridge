@@ -322,30 +322,98 @@ func setupInterfaceIP(ifaceName, ipAddr, subnet string) error {
 }
 
 // New creates a new forwarder instance
-// NewListener creates only the listener node to receive from Pixhawk
-// This is called BEFORE connecting to Pixhawk to capture its System ID
-func NewListener(cfg *config.Config) (*gomavlib.Node, error) {
+// DiscoverPixhawk opens a transient MAVLink node to discover Pixhawk's IP via broadcast.
+// Returns the discovered IP (string) and its System ID (uint8).
+func DiscoverPixhawk(cfg *config.Config, timeout time.Duration) (string, uint8, error) {
+	logger.Info("[DISCOVERY] 🔎 Starting Pixhawk discovery via Broadcast...")
+
 	// Get ethernet IP for UDP broadcast
 	localEthIP, broadcastEthIP, ifaceName, ethErr := getEthernetIP(cfg)
+	if ethErr != nil || localEthIP == "" || broadcastEthIP == "" {
+		return "", 0, fmt.Errorf("network discovery unavailable: %v", ethErr)
+	}
 
+	// Use temporary endpoints for discovery
+	// We use the same listen port, but we'll close this node immediately after discovery
+	endpoints := []gomavlib.EndpointConf{
+		gomavlib.EndpointUDPServer{Address: fmt.Sprintf("0.0.0.0:%d", cfg.Network.LocalListenPort)},
+		gomavlib.EndpointUDPBroadcast{
+			BroadcastAddress: fmt.Sprintf("%s:%d", broadcastEthIP, cfg.Network.LocalListenPort),
+			LocalAddress:     fmt.Sprintf("%s:%d", localEthIP, cfg.Network.BroadcastPort),
+		},
+	}
+
+	logger.Info("[DISCOVERY] UDP Broadcast enabled on %s: Local=%s:%d, Broadcast=%s:%d",
+		ifaceName, localEthIP, cfg.Network.BroadcastPort, broadcastEthIP, cfg.Network.LocalListenPort)
+
+	discoveryNode, err := gomavlib.NewNode(gomavlib.NodeConf{
+		Endpoints:  endpoints,
+		Dialect:    mavlink_custom.GetCombinedDialect(),
+		OutVersion: gomavlib.V2,
+	})
+	if err != nil {
+		return "", 0, fmt.Errorf("failed to create discovery node: %w", err)
+	}
+	defer discoveryNode.Close()
+
+	// Wait for heartbeat
+	timeoutTimer := time.NewTimer(timeout)
+	defer timeoutTimer.Stop()
+
+	eventCh := discoveryNode.Events()
+	for {
+		select {
+		case <-timeoutTimer.C:
+			return "", 0, fmt.Errorf("discovery timed out after %v", timeout)
+		case event := <-eventCh:
+			if frame, ok := event.(*gomavlib.EventFrame); ok {
+				if _, ok := frame.Message().(*common.MessageHeartbeat); ok {
+					remoteAddr := frame.Channel.Endpoint().RemoteAddr().String()
+					// Extract IP from host:port
+					ip, _, _ := net.SplitHostPort(remoteAddr)
+					if ip == "" {
+						ip = remoteAddr
+					}
+
+					sysID := frame.SystemID()
+					logger.Info("[DISCOVERY] ✅ Found Pixhawk at %s (System ID: %d)", ip, sysID)
+					return ip, sysID, nil
+				}
+			}
+		}
+	}
+}
+
+// NewListener creates only the listener node to receive from Pixhawk
+// If pixhawkIP is provided, it uses direct Unicast instead of Broadcast.
+func NewListener(cfg *config.Config, pixhawkIP string) (*gomavlib.Node, error) {
 	// Build endpoints list
 	endpoints := []gomavlib.EndpointConf{
 		gomavlib.EndpointUDPServer{Address: fmt.Sprintf("0.0.0.0:%d", cfg.Network.LocalListenPort)},
 	}
 
-	// Only add UDP broadcast endpoint if ethernet interface was found
-	if ethErr == nil && localEthIP != "" && broadcastEthIP != "" {
-		// Use configured broadcast port, or 0 (random) if not set
-		broadcastLocalPort := cfg.Network.BroadcastPort
-		endpoints = append(endpoints, gomavlib.EndpointUDPBroadcast{
-			BroadcastAddress: fmt.Sprintf("%s:%d", broadcastEthIP, cfg.Network.LocalListenPort),
-			LocalAddress:     fmt.Sprintf("%s:%d", localEthIP, broadcastLocalPort),
+	if pixhawkIP != "" {
+		// Use direct Unicast to the discovered IP
+		// Standard MAVLink port is 14550
+		endpoints = append(endpoints, gomavlib.EndpointUDPClient{
+			Address: fmt.Sprintf("%s:14550", pixhawkIP),
 		})
-		logger.Info("[NETWORK] UDP Broadcast enabled on %s: Local=%s:%d, Broadcast=%s:%d",
-			ifaceName, localEthIP, broadcastLocalPort, broadcastEthIP, cfg.Network.LocalListenPort)
+		logger.Info("[NETWORK] Using clean Unicast connection to Pixhawk at %s:14550", pixhawkIP)
 	} else {
-		logger.Warn("[NETWORK] UDP Broadcast disabled: %v", ethErr)
-		logger.Info("[NETWORK] Running with UDP Server only on 0.0.0.0:%d", cfg.Network.LocalListenPort)
+		// Fallback to Broadcast if no IP discovered yet
+		localEthIP, broadcastEthIP, ifaceName, ethErr := getEthernetIP(cfg)
+		if ethErr == nil && localEthIP != "" && broadcastEthIP != "" {
+			broadcastLocalPort := cfg.Network.BroadcastPort
+			endpoints = append(endpoints, gomavlib.EndpointUDPBroadcast{
+				BroadcastAddress: fmt.Sprintf("%s:%d", broadcastEthIP, cfg.Network.LocalListenPort),
+				LocalAddress:     fmt.Sprintf("%s:%d", localEthIP, broadcastLocalPort),
+			})
+			logger.Info("[NETWORK] UDP Broadcast enabled on %s: Local=%s:%d, Broadcast=%s:%d",
+				ifaceName, localEthIP, broadcastLocalPort, broadcastEthIP, cfg.Network.LocalListenPort)
+		} else {
+			logger.Warn("[NETWORK] UDP Broadcast disabled: %v", ethErr)
+			logger.Info("[NETWORK] Running with UDP Server only on 0.0.0.0:%d", cfg.Network.LocalListenPort)
+		}
 	}
 
 	// Create listener node to receive from Pixhawk
@@ -387,40 +455,11 @@ func New(cfg *config.Config, authClient *auth.Client, listenerNode *gomavlib.Nod
 	// Reuse listener node if provided, otherwise create a new one
 	var err error
 	if listenerNode == nil {
-		// Get ethernet IP for UDP broadcast
-		localEthIP, broadcastEthIP, ifaceName, ethErr := getEthernetIP(cfg)
-
-		// Build endpoints list
-		endpoints := []gomavlib.EndpointConf{
-			gomavlib.EndpointUDPServer{Address: fmt.Sprintf("0.0.0.0:%d", cfg.Network.LocalListenPort)},
-		}
-
-		// Only add UDP broadcast endpoint if ethernet interface was found
-		if ethErr == nil && localEthIP != "" && broadcastEthIP != "" {
-			// Use configured broadcast port, or 0 (random) if not set
-			broadcastLocalPort := cfg.Network.BroadcastPort
-			endpoints = append(endpoints, gomavlib.EndpointUDPBroadcast{
-				BroadcastAddress: fmt.Sprintf("%s:%d", broadcastEthIP, cfg.Network.LocalListenPort),
-				LocalAddress:     fmt.Sprintf("%s:%d", localEthIP, broadcastLocalPort),
-			})
-			logger.Info("[NETWORK] UDP Broadcast enabled on %s: Local=%s:%d, Broadcast=%s:%d",
-				ifaceName, localEthIP, broadcastLocalPort, broadcastEthIP, cfg.Network.LocalListenPort)
-		} else {
-			logger.Warn("[NETWORK] UDP Broadcast disabled: %v", ethErr)
-			logger.Info("[NETWORK] Running with UDP Server only on 0.0.0.0:%d", cfg.Network.LocalListenPort)
-		}
-
-		// Create listener node to receive from Pixhawk
-		listenerNode, err = gomavlib.NewNode(gomavlib.NodeConf{
-			Endpoints:   endpoints,
-			Dialect:     mavlink_custom.GetCombinedDialect(),
-			OutVersion:  gomavlib.V2,
-			OutSystemID: 255, // Ground station ID
-		})
+		// Re-use logic from NewListener for fallback if needed
+		listenerNode, err = NewListener(cfg, "")
 		if err != nil {
-			return nil, fmt.Errorf("failed to create listener MAVLink node: %w", err)
+			return nil, err
 		}
-		logger.Info("MAVLink listener created on port %d", cfg.Network.LocalListenPort)
 	} else {
 		logger.Info("[FORWARDER] Reusing existing listener node")
 	}
