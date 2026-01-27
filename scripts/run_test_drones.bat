@@ -61,6 +61,12 @@ for /L %%i in (1,1,%NUM_DRONES%) do (
         REM Subsequent tabs
         set "WT_CMD=!WT_CMD! ; new-tab -p "Command Prompt" --title "Drone !CURRENT_UUID!" !DRONE_CMD!"
     )
+
+    REM Wait 10s between instances to allow clean discovery (except last one)
+    if %%i LSS %NUM_DRONES% (
+        echo   Waiting 10s for discovery to complete...
+        timeout /t 10 /nobreak >nul
+    )
 )
 
 echo.

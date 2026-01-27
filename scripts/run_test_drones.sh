@@ -68,8 +68,9 @@ do
     echo "  PID: $PID"
     echo "  Log: $LOG_FILE"
     
-    # Small delay
-    sleep 1
+    # Wait for discovery phase of current instance to finish
+    echo "  Waiting 10s for discovery to complete..."
+    sleep 10
 done
 
 echo ""
