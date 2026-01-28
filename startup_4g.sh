@@ -16,7 +16,7 @@ log "========================================="
 
 # Đợi system ổn định và USB devices enumerate
 log "Waiting for system to stabilize..."
-sleep 15
+sleep 30
 
 # Wait for USB serial devices
 log "Checking for USB devices..."
