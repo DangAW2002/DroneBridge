@@ -476,7 +476,7 @@ func NewListener(cfg *config.Config, pixhawkIP string) (*gomavlib.Node, error) {
 // New creates a new forwarder instance with BOTH listener and sender nodes
 // IMPORTANT: Call this AFTER Pixhawk has connected, so OutSystemID matches actual drone SysID
 // If listenerNode is provided, it will be reused (don't create a new one)
-func New(cfg *config.Config, authClient *auth.Client, listenerNode *gomavlib.Node) (*Forwarder, error) {
+func New(cfg *config.Config, authClient *auth.Client, listenerNode *gomavlib.Node, pixhawkSysID uint8) (*Forwarder, error) {
 	// Use provided auth client (already created and authenticated in main.go)
 	// This ensures both web server and forwarder use the SAME session token
 	if cfg.Auth.Enabled && authClient == nil {
@@ -507,9 +507,7 @@ func New(cfg *config.Config, authClient *auth.Client, listenerNode *gomavlib.Nod
 		logger.Info("[FORWARDER] Reusing existing listener node")
 	}
 
-	// Get actual Pixhawk System ID from web bridge (was captured from heartbeat)
-	pixhawkSysID := web.GetPixhawkSystemID()
-	// Use default System ID if Pixhawk not available (e.g., when allow_missing_pixhawk=true)
+	// Use default System ID if Pixhawk not available (e.g., when allow_missing_pixhawk=true and no heartbeat seen)
 	if pixhawkSysID == 0 {
 		pixhawkSysID = 1 // Default valid System ID for missing Pixhawk
 	}
