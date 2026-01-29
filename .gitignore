@@ -5,3 +5,4 @@ logs/
 __pycache__/
 .drone_secret
 test_mode/
+*pids
