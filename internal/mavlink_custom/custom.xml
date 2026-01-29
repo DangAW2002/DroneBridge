@@ -4,8 +4,8 @@
   <dialect>0</dialect>
 
   <messages>
-    <!-- Session Token Heartbeat - ID 42000 -->
-    <message id="42000" name="SESSION_HEARTBEAT">
+    <!-- Session Token Heartbeat - ID 42999 -->
+    <message id="42999" name="SESSION_HEARTBEAT">
       <description>Session token heartbeat for IP:Port synchronization</description>
       <field type="uint8_t[32]" name="token">Session token (32 bytes binary)</field>
       <field type="uint32_t" name="expires_at">Session expiration timestamp (Unix time)</field>

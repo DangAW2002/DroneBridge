@@ -210,7 +210,7 @@ func main() {
 
 	// STEP 2: Now create full forwarder (with sender node using correct SysID)
 	logger.Info("[STARTUP] ✈️  Creating forwarder with correct System ID...")
-	fwd, err := forwarder.New(cfg, nil, listenerNode) // Pass listenerNode to reuse it
+	fwd, err := forwarder.New(cfg, nil, listenerNode, pixhawkSysID) // Pass listenerNode and discovered SysID
 	if err != nil {
 		logger.Fatal("Failed to create forwarder: %v", err)
 	}

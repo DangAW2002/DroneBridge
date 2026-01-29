@@ -5,6 +5,7 @@ log:
   level: "info"                          # Log level: debug, info, warn, error
   verbose: false                         # Enable verbose parsing of server messages (detailed field breakdown)
   timestamp_format: "unix"               # Timestamp format: "time" (human-readable) or "unix" (Unix timestamp)
+  stats_interval: 30                     # Interval in seconds for printing stats
 
 # Authentication settings
 # ⚠️ These credentials are from drones_v2 table in database

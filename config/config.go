@@ -22,6 +22,7 @@ type LogConfig struct {
 	Level           string `yaml:"level"`            // debug, info, warn, error
 	Verbose         bool   `yaml:"verbose"`          // Enable verbose parsing of received messages
 	TimestampFormat string `yaml:"timestamp_format"` // "time" or "unix"
+	StatsInterval   int    `yaml:"stats_interval"`   // Interval in seconds for printing stats (default: 30)
 }
 
 // EthernetConfig contains ethernet interface settings for Pixhawk connection
@@ -185,6 +186,9 @@ func Load(filename string) (*Config, error) {
 	// Set defaults
 	if cfg.Log.Level == "" {
 		cfg.Log.Level = "info"
+	}
+	if cfg.Log.StatsInterval <= 0 {
+		cfg.Log.StatsInterval = 30
 	}
 	if cfg.Ethernet.Subnet == "" {
 		cfg.Ethernet.Subnet = "24"

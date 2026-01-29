@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/bluenviron/gomavlib/v3"
@@ -84,6 +85,12 @@ type Forwarder struct {
 
 	// Server IP for loop prevention
 	serverIP string
+
+	// Stats
+	statsManager *logger.StatsManager
+	rxCount      *atomic.Uint64
+	txCount      *atomic.Uint64
+	dedupCount   *atomic.Uint64
 }
 
 // getLocalIP returns the current local IP address used for outbound connections
@@ -476,7 +483,7 @@ func NewListener(cfg *config.Config, pixhawkIP string) (*gomavlib.Node, error) {
 // New creates a new forwarder instance with BOTH listener and sender nodes
 // IMPORTANT: Call this AFTER Pixhawk has connected, so OutSystemID matches actual drone SysID
 // If listenerNode is provided, it will be reused (don't create a new one)
-func New(cfg *config.Config, authClient *auth.Client, listenerNode *gomavlib.Node) (*Forwarder, error) {
+func New(cfg *config.Config, authClient *auth.Client, listenerNode *gomavlib.Node, pixhawkSysID uint8) (*Forwarder, error) {
 	// Use provided auth client (already created and authenticated in main.go)
 	// This ensures both web server and forwarder use the SAME session token
 	if cfg.Auth.Enabled && authClient == nil {
@@ -507,9 +514,7 @@ func New(cfg *config.Config, authClient *auth.Client, listenerNode *gomavlib.Nod
 		logger.Info("[FORWARDER] Reusing existing listener node")
 	}
 
-	// Get actual Pixhawk System ID from web bridge (was captured from heartbeat)
-	pixhawkSysID := web.GetPixhawkSystemID()
-	// Use default System ID if Pixhawk not available (e.g., when allow_missing_pixhawk=true)
+	// Use default System ID if Pixhawk not available (e.g., when allow_missing_pixhawk=true and no heartbeat seen)
 	if pixhawkSysID == 0 {
 		pixhawkSysID = 1 // Default valid System ID for missing Pixhawk
 	}
@@ -558,7 +563,13 @@ func New(cfg *config.Config, authClient *auth.Client, listenerNode *gomavlib.Nod
 		lastSeqNum:       make(map[uint8]uint8),
 		verboseMode:      cfg.Log.Verbose,
 		serverIP:         sIP,
+		statsManager:     logger.NewStatsManager(cfg.Log.StatsInterval),
 	}
+
+	// Register counters
+	fwd.rxCount = fwd.statsManager.RegisterCounter("Received")
+	fwd.txCount = fwd.statsManager.RegisterCounter("Forwarded")
+	fwd.dedupCount = fwd.statsManager.RegisterCounter("Dedup")
 
 	// Wire up network error callback
 	if authClient != nil {
@@ -648,6 +659,9 @@ func (f *Forwarder) Start() error {
 	// DISABLED: GCS heartbeat causes MAV ID confusion (SystemID=1 conflicts with drone)
 	// DroneBridge should only forward messages, not generate its own heartbeat
 	// go f.sendHeartbeat()
+	// Start statistics logging
+	fwd.statsManager.Start()
+
 	go f.sendMavlinkSessionHeartbeat() // MAVLink-wrapped session heartbeat for IP:Port sync
 
 	logger.Info("Forwarder started - listening on port %d, forwarding to %s",
@@ -668,14 +682,16 @@ func (f *Forwarder) Stop() {
 
 	f.listenerNode.Close()
 	f.senderNode.Close()
+
+	if f.statsManager != nil {
+		f.statsManager.Stop()
+	}
 	logger.Info("Forwarder stopped")
 }
 
 // receiveAndForward listens for incoming MAVLink messages from Pixhawk and forwards them to server
 func (f *Forwarder) receiveAndForward() {
 	eventCh := f.listenerNode.Events()
-	messageCount := 0
-	forwardedCount := 0
 
 	for {
 		select {
@@ -690,7 +706,8 @@ func (f *Forwarder) receiveAndForward() {
 				msgTypeName := getMessageTypeName(msg)
 				sysID := e.SystemID()
 				seqNum := e.Frame.GetSequenceNumber()
-				messageCount++
+
+				f.rxCount.Add(1)
 
 				// Skip messages not from Pixhawk (filter by SystemID 255, GCS type, or Server IP)
 				// Only forward messages from flight controller (typically SystemID 1)
@@ -721,21 +738,15 @@ func (f *Forwarder) receiveAndForward() {
 				if exists && lastSeq == seqNum {
 					// Duplicate message, skip
 					f.seqMu.Unlock()
+					f.dedupCount.Add(1)
 					logger.Debug("[DUP] Skipping duplicate %s (SysID: %d, Seq: %d)", msgTypeName, sysID, seqNum)
 					continue
 				}
 				f.lastSeqNum[sysID] = seqNum
 				f.seqMu.Unlock()
 
-				forwardedCount++
-
 				// Debug: Log all received messages
 				logger.Debug("[RX] %s (SysID: %d, Seq: %d)", msgTypeName, sysID, seqNum)
-
-				if forwardedCount%10000 == 0 {
-					logger.Info("[STATS] Forwarded %d messages (received %d, dedup rate: %.1f%%)",
-						forwardedCount, messageCount, float64(messageCount-forwardedCount)/float64(messageCount)*100)
-				}
 
 				// Log specific message types at INFO level (reduced frequency)
 				switch m := msg.(type) {
@@ -785,7 +796,8 @@ func (f *Forwarder) receiveAndForward() {
 						logger.Error("[FORWARD] Failed to forward frame %s: %v", msgTypeName, err)
 						metrics.Global.IncFailedSend(msgTypeName)
 					} else {
-						logger.Debug("[FORWARD] %s #%d", msgTypeName, forwardedCount)
+						f.txCount.Add(1)
+						logger.Debug("[FORWARD] %s", msgTypeName)
 						metrics.Global.IncSent(msgTypeName)
 					}
 				}
