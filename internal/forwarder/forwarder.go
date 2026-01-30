@@ -660,7 +660,7 @@ func (f *Forwarder) Start() error {
 	// DroneBridge should only forward messages, not generate its own heartbeat
 	// go f.sendHeartbeat()
 	// Start statistics logging
-	fwd.statsManager.Start()
+	f.statsManager.Start()
 
 	go f.sendMavlinkSessionHeartbeat() // MAVLink-wrapped session heartbeat for IP:Port sync
 

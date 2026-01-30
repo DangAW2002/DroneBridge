@@ -13,7 +13,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-BASE_LISTEN_PORT=14540
+BASE_LISTEN_PORT=15000
 BASE_WEB_PORT=8090
 DRONE_EXEC="./build/dronebridge"
 
