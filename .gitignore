@@ -6,3 +6,4 @@ __pycache__/
 .drone_secret
 test_mode/
 *pids
+*exe
