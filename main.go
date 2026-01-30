@@ -146,20 +146,20 @@ func main() {
 
 	// STEP 0: Discover Pixhawk (Transient Phase)
 	logger.Info("[STARTUP] ⏳ Entering Discovery Phase...")
-	discoveredIP, discoveredSysID, discErr := forwarder.DiscoverPixhawk(cfg, time.Duration(cfg.Ethernet.PixhawkConnectionTimeout)*time.Second)
+	discoveredIP, discoveredPort, discoveredSysID, discErr := forwarder.DiscoverPixhawk(cfg, time.Duration(cfg.Ethernet.PixhawkConnectionTimeout)*time.Second)
 
 	var listenerNode *gomavlib.Node
 	if discErr == nil {
-		logger.Info("[STARTUP] ✅ Pixhawk discovered at %s (System ID: %d)", discoveredIP, discoveredSysID)
+		logger.Info("[STARTUP] ✅ Pixhawk discovered at %s:%d (System ID: %d)", discoveredIP, discoveredPort, discoveredSysID)
 		// Register found SysID with web bridge early
 		web.HandleHeartbeat(discoveredSysID)
 
 		// Create CLEAN Unicast listener
-		listenerNode, err = forwarder.NewListener(cfg, discoveredIP)
+		listenerNode, err = forwarder.NewListener(cfg, discoveredIP, discoveredPort)
 	} else {
 		if cfg.Ethernet.AllowMissingPixhawk {
 			logger.Warn("[STARTUP] ⚠️  Discovery failed (%v), but AllowMissingPixhawk=true, continuing with Broadcast fallback...", discErr)
-			listenerNode, err = forwarder.NewListener(cfg, "")
+			listenerNode, err = forwarder.NewListener(cfg, "", 0)
 		} else {
 			logger.Fatal("[STARTUP] ❌ Pixhawk discovery failed: %v. Set 'allow_missing_pixhawk: true' to skip.", discErr)
 		}

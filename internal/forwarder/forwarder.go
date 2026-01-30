@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os/exec"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -333,8 +334,8 @@ func setupInterfaceIP(ifaceName, ipAddr, subnet string) error {
 
 // New creates a new forwarder instance
 // DiscoverPixhawk opens a transient MAVLink node to discover Pixhawk's IP via broadcast.
-// Returns the discovered IP (string) and its System ID (uint8).
-func DiscoverPixhawk(cfg *config.Config, timeout time.Duration) (string, uint8, error) {
+// Returns the discovered IP (string), Port (int), and its System ID (uint8).
+func DiscoverPixhawk(cfg *config.Config, timeout time.Duration) (string, int, uint8, error) {
 	logger.Info("[DISCOVERY] 🔎 Starting Pixhawk discovery via Broadcast...")
 
 	// Resolve server IP to avoid self-discovery loop
@@ -348,7 +349,7 @@ func DiscoverPixhawk(cfg *config.Config, timeout time.Duration) (string, uint8, 
 	// Get ethernet IP for UDP broadcast
 	localEthIP, broadcastEthIP, ifaceName, ethErr := getEthernetIP(cfg)
 	if ethErr != nil || localEthIP == "" || broadcastEthIP == "" {
-		return "", 0, fmt.Errorf("network discovery unavailable: %v", ethErr)
+		return "", 0, 0, fmt.Errorf("network discovery unavailable: %v", ethErr)
 	}
 
 	// Use temporary endpoints for discovery
@@ -371,7 +372,7 @@ func DiscoverPixhawk(cfg *config.Config, timeout time.Duration) (string, uint8, 
 		OutSystemID: 255, // Identify as a GCS during discovery
 	})
 	if err != nil {
-		return "", 0, fmt.Errorf("failed to create discovery node: %w", err)
+		return "", 0, 0, fmt.Errorf("failed to create discovery node: %w", err)
 	}
 	defer discoveryNode.Close()
 
@@ -383,7 +384,7 @@ func DiscoverPixhawk(cfg *config.Config, timeout time.Duration) (string, uint8, 
 	for {
 		select {
 		case <-timeoutTimer.C:
-			return "", 0, fmt.Errorf("discovery timed out after %v", timeout)
+			return "", 0, 0, fmt.Errorf("discovery timed out after %v", timeout)
 		case event := <-eventCh:
 			if frame, ok := event.(*gomavlib.EventFrame); ok {
 				if hb, ok := frame.Message().(*common.MessageHeartbeat); ok {
@@ -415,10 +416,11 @@ func DiscoverPixhawk(cfg *config.Config, timeout time.Duration) (string, uint8, 
 					}
 
 					// Extract IP from host:port
-					ip, _, _ := net.SplitHostPort(remoteAddr)
+					ip, portStr, _ := net.SplitHostPort(remoteAddr)
 					if ip == "" {
 						ip = remoteAddr
 					}
+					port, _ := strconv.Atoi(portStr)
 
 					// 3. Skip Server IP (explicit loop prevention)
 					if serverIP != "" && ip == serverIP {
@@ -426,8 +428,8 @@ func DiscoverPixhawk(cfg *config.Config, timeout time.Duration) (string, uint8, 
 						continue
 					}
 
-					logger.Info("[DISCOVERY] ✅ Found Pixhawk at %s (System ID: %d, Autopilot: %d) from channel: %s", ip, sysID, hb.Autopilot, chanStr)
-					return ip, sysID, nil
+					logger.Info("[DISCOVERY] ✅ Found Pixhawk at %s:%d (System ID: %d, Autopilot: %d) from channel: %s", ip, port, sysID, hb.Autopilot, chanStr)
+					return ip, port, sysID, nil
 				}
 			}
 		}
@@ -436,7 +438,7 @@ func DiscoverPixhawk(cfg *config.Config, timeout time.Duration) (string, uint8, 
 
 // NewListener creates only the listener node to receive from Pixhawk
 // If pixhawkIP is provided, it uses direct Unicast instead of Broadcast.
-func NewListener(cfg *config.Config, pixhawkIP string) (*gomavlib.Node, error) {
+func NewListener(cfg *config.Config, pixhawkIP string, pixhawkPort int) (*gomavlib.Node, error) {
 	// Build endpoints list
 	endpoints := []gomavlib.EndpointConf{
 		gomavlib.EndpointUDPServer{Address: fmt.Sprintf("0.0.0.0:%d", cfg.Network.LocalListenPort)},
@@ -444,11 +446,15 @@ func NewListener(cfg *config.Config, pixhawkIP string) (*gomavlib.Node, error) {
 
 	if pixhawkIP != "" {
 		// Use direct Unicast to the discovered IP
-		// Standard MAVLink port is 14550
+		targetPort := 14550 // Default fallback
+		if pixhawkPort > 0 {
+			targetPort = pixhawkPort
+		}
+
 		endpoints = append(endpoints, gomavlib.EndpointUDPClient{
-			Address: fmt.Sprintf("%s:14550", pixhawkIP),
+			Address: fmt.Sprintf("%s:%d", pixhawkIP, targetPort),
 		})
-		logger.Info("[NETWORK] Using clean Unicast connection to Pixhawk at %s:14550", pixhawkIP)
+		logger.Info("[NETWORK] Using clean Unicast connection to Pixhawk at %s:%d", pixhawkIP, targetPort)
 	} else {
 		// Fallback to Broadcast if no IP discovered yet
 		localEthIP, broadcastEthIP, ifaceName, ethErr := getEthernetIP(cfg)
@@ -506,7 +512,7 @@ func New(cfg *config.Config, authClient *auth.Client, listenerNode *gomavlib.Nod
 	var err error
 	if listenerNode == nil {
 		// Re-use logic from NewListener for fallback if needed
-		listenerNode, err = NewListener(cfg, "")
+		listenerNode, err = NewListener(cfg, "", 0)
 		if err != nil {
 			return nil, err
 		}
